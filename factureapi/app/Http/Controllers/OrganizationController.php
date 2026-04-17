@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Organization;
 use App\Models\User;
+use FedaPay\FedaPay;
+use FedaPay\Transaction;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -153,9 +154,98 @@ class OrganizationController extends Controller
         ]);
     }
 
-    // DELETE /api/organizations/{id}
-    public function destroy(Organization $organization): JsonResponse
+    public function changePlan(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'transaction_id' => 'required|integer',
+            'firstname'      => 'required|string|max:255',
+            'lastname'       => 'required|string|max:255',
+            'phone'          => 'required|string|max:30',
+            'amount'         => 'required|integer|min:1',
+            'months'         => 'required|integer|in:1,3,6,9,12',
+            'plan'           => 'required|in:pro,business',
+        ]);
+
+        $organization = $request->user()->organization;
+        $expectedAmount = Organization::PLAN_PRICES[$validated['plan']] * $validated['months'];
+
+        if ((int) $validated['amount'] !== $expectedAmount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le montant du paiement ne correspond pas au plan choisi.',
+            ], 422);
+        }
+
+        FedaPay::setApiKey(config('services.fedapay.secret_key'));
+        FedaPay::setEnvironment(config('services.fedapay.env'));
+
+        try {
+            $transaction = Transaction::retrieve($validated['transaction_id']);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaction FedaPay introuvable ou invalide.',
+            ], 422);
+        }
+
+        if (($transaction->status ?? null) !== 'approved') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le paiement n\'a pas ete approuve.',
+            ], 422);
+        }
+
+        if ((int) ($transaction->amount ?? 0) !== $expectedAmount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le montant valide par FedaPay ne correspond pas au plan choisi.',
+            ], 422);
+        }
+
+        $limits = Organization::PLAN_LIMITS[$validated['plan']];
+        $planExpiresAt = now()->addMonths($validated['months']);
+
+        $updatedOrganization = DB::transaction(function () use ($validated, $organization, $limits, $planExpiresAt) {
+            $organization->update([
+                'plan'            => $validated['plan'],
+                'plan_started_at' => now(),
+                'plan_expires_at' => $planExpiresAt,
+                'max_users'       => $limits['max_users'],
+                'max_invoices'    => $limits['max_invoices'],
+                'is_active'       => true,
+            ]);
+
+            return $organization->fresh();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Le plan a ete mis a jour avec succes.',
+            'data'    => $updatedOrganization,
+        ]);
+    }
+
+    // DELETE /api/organizations/{id}
+    public function destroy(Request $request, Organization $organization): JsonResponse
+    {
+        $user = $request->user();
+
+        if ((int) $user->organization_id !== (int) $organization->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous ne pouvez pas supprimer cette organisation.',
+            ], 403);
+        }
+
+        if (!in_array($user->role, ['admin', 'superAdmin'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seuls les administrateurs peuvent supprimer l\'organisation.',
+            ], 403);
+        }
+
+        $currentToken = $user->currentAccessToken();
+
         // Supprimer le logo du storage si existe
         if ($organization->logo) {
             $oldPath = str_replace('/storage/', 'public/', parse_url($organization->logo, PHP_URL_PATH));
@@ -163,6 +253,7 @@ class OrganizationController extends Controller
         }
 
         $organization->delete();
+        $currentToken?->delete();
 
         return response()->json([
             'success' => true,

@@ -25,10 +25,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">F</span>
-              </div>
-              <span className="text-xl font-bold text-foreground">FacturaPro</span>
+              <img src="/logoFacture.png" alt="Logo FacturaPro" width="150" />
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
               La solution de facturation simple et efficace pour les professionnels indépendants.

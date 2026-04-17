@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Organizations
     Route::get('/organizations',          [OrganizationController::class, 'index']);
+    Route::post('/organizations/change-plan', [OrganizationController::class, 'changePlan']);
     Route::put('/organizations/emcef',    [OrganizationController::class, 'updateemcef']);
     Route::get('/organizations/{organization}',    [OrganizationController::class, 'show']);
     Route::put('/organizations/{organization}',    [OrganizationController::class, 'update']);

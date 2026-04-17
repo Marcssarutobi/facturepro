@@ -73,10 +73,7 @@ export function Sidebar() {
     <aside className="hidden w-60 flex-shrink-0 border-r bg-card lg:flex lg:flex-col">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <span className="text-sm font-bold text-primary-foreground">F</span>
-        </div>
-        <span className="text-lg font-bold text-foreground">FacturaPro</span>
+        <img src="/logoFacture.png" alt="Logo FacturaPro" width="150" />
       </div>
 
       {/* Navigation */}
