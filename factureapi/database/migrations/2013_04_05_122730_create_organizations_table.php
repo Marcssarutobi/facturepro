@@ -26,7 +26,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);  // organisation active ou suspendue
 
             // Limites selon le plan (mis à jour automatiquement quand le plan change)
-            $table->integer('max_users')->default(1);      // free=1, pro=3, business=null
+            $table->integer('max_users')->default(1)->nullable();      // free=1, pro=3, business=null
             $table->integer('max_invoices')->nullable();   // free=3/mois, pro=null, business=null
 
             $table->timestamps();

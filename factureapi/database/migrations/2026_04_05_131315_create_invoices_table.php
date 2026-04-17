@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('total_ht', 12, 2);
             $table->decimal('total_tva', 12, 2);
             $table->decimal('total_ttc', 12, 2)->nullable();
-            $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
+            $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->timestamps();

@@ -13,13 +13,20 @@ class Organization extends Model
     protected $fillable = [
         'name', 'adresse', 'logo', 'plan',
         'plan_started_at', 'plan_expires_at',
-        'is_active', 'max_users', 'max_invoices', 'email', 'phone'
+        'is_active', 'max_users', 'max_invoices', 'email', 'phone',
+        'ifu',           // ← nouveau
+        'emcef_token',   // ← nouveau
+        'emcef_nim',     // ← nouveau
+        'emcef_active',  // ← nouveau
     ];
 
     protected $casts = [
         'plan_started_at' => 'date',
         'plan_expires_at' => 'date',
         'is_active'       => 'boolean',
+        'emcef_active'    => 'boolean',
+        'emcef_token'    => 'encrypted',
+        'ifu'    => 'encrypted',
     ];
 
     // ─────────────────────────────────────────
@@ -31,7 +38,7 @@ class Organization extends Model
             'max_invoices' => 3,
         ],
         'pro' => [
-            'max_users'    => null,//3
+            'max_users'    => 5,//3
             'max_invoices' => null,
         ],
         'business' => [
@@ -87,8 +94,8 @@ class Organization extends Model
     // ─────────────────────────────────────────
     const PLAN_PRICES = [
         'free'     => 0,
-        'pro'      => 3000,
-        'business' => 7000,
+        'pro'      => 5000,
+        'business' => 12000,
     ];
 
     // ─────────────────────────────────────────
@@ -206,5 +213,26 @@ class Organization extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
+    }
+
+    // Vérifie si l'organisation peut normaliser ses factures
+    public function canNormalize(): bool
+    {
+        return $this->emcef_active
+            && !empty($this->ifu)
+            && !empty($this->emcef_token);
+    }
+
+    // Retourne l'URL de l'API e-MCF selon l'env
+    public function emcefInvoiceUrl(): string
+    {
+        return app()->environment('production')
+            ? 'https://sygmef.impots.bj/emcf/api/invoice'
+            : 'https://developper.impots.bj/sygmef-emcf/api/invoice';
     }
 }

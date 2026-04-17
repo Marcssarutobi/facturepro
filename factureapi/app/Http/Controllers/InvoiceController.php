@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Support\Facades\Mail;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 
 class InvoiceController extends Controller
 {
@@ -58,11 +63,12 @@ class InvoiceController extends Controller
 
         $validated = $request->validate([
             'customer_id' => [
-                'required',
+                'nullable',
                 Rule::exists('customers', 'id')->where(
                     fn ($query) => $query->where('organization_id', $request->user()->organization_id)
                 ),
             ],
+            'anonymous_customer_name' => 'nullable|string|max:255',
             'invoice_number' => 'required|string|unique:invoices,invoice_number',
             'due_at' => 'required|date',
             'echeance_at' => 'required|date',
@@ -75,16 +81,28 @@ class InvoiceController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
+
             $totalHt = collect($validated['items'])->sum(
                 fn ($item) => $item['quantity'] * $item['unit_price']
             );
+
             $totalTva = collect($validated['items'])->sum(
                 fn ($item) => $item['quantity'] * $item['unit_price'] * ($item['vat_rate'] ?? 0)
             );
+
             $totalTtc = $totalHt + $totalTva;
 
+            // ✅ Générer nom client anonyme si pas de customer_id
+            $anonymousName = null;
+
+            if (empty($validated['customer_id'])) {
+                $anonymousName = $validated['anonymous_customer_name']
+                    ?? 'Client anonyme #' . now()->timestamp;
+            }
+
             $invoice = Invoice::create([
-                'customer_id' => $validated['customer_id'],
+                'customer_id' => $validated['customer_id'] ?? null,
+                'anonymous_customer_name' => $anonymousName, // ✅ ICI
                 'invoice_number' => $validated['invoice_number'],
                 'due_at' => $validated['due_at'],
                 'echeance_at' => $validated['echeance_at'],
@@ -113,6 +131,21 @@ class InvoiceController extends Controller
         $this->ensureSameOrganization($request, $invoice);
 
         $invoice->load(['customer', 'user', 'items', 'organization']);
+
+        // ✅ Générer QR code si facture normalisée
+        if ($invoice->is_normalized && $invoice->emcef_qr_code) {
+
+            $renderer = new ImageRenderer(
+                new RendererStyle(300),
+                new SvgImageBackEnd() // ✅ PAS Imagick
+            );
+
+            $writer = new Writer($renderer);
+
+            $qrCode = $writer->writeString($invoice->emcef_qr_code);
+
+            $invoice->qr_code_base64 = 'data:image/svg+xml;base64,' . base64_encode($qrCode);
+        }
 
         return response()->json([
             'success' => true,
@@ -148,6 +181,22 @@ class InvoiceController extends Controller
             } else {
                 $invoice->organization->logo_base64 = null;
             }
+        }
+
+        // ✅ Générer QR code si facture normalisée
+        if ($invoice->is_normalized && $invoice->emcef_qr_code) {
+
+            $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300),
+                new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+            );
+
+            $writer = new \BaconQrCode\Writer($renderer);
+
+            $qrCode = $writer->writeString($invoice->emcef_qr_code);
+
+            $invoice->qr_code_base64 =
+                'data:image/svg+xml;base64,' . base64_encode($qrCode);
         }
 
         $pdf = Pdf::loadView('invoices.pdf', [
@@ -276,6 +325,47 @@ class InvoiceController extends Controller
 
         $invoice->load(['customer', 'items', 'organization', 'user']);
 
+        // ✅ 🔥 AJOUT ICI (logo_base64)
+        if ($invoice->organization->logo) {
+            $logoPath = str_replace(
+                url('/storage'),
+                storage_path('app/public'),
+                $invoice->organization->logo
+            );
+
+            if (file_exists($logoPath)) {
+                $extension = pathinfo($logoPath, PATHINFO_EXTENSION);
+
+                $mimeType = match (strtolower($extension)) {
+                    'png'  => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'svg'  => 'image/svg+xml',
+                    default => 'image/png',
+                };
+
+                $invoice->organization->logo_base64 =
+                    'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($logoPath));
+            } else {
+                $invoice->organization->logo_base64 = null;
+            }
+        }
+
+        // ✅ Générer QR code si facture normalisée
+        if ($invoice->is_normalized && $invoice->emcef_qr_code) {
+
+            $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300),
+                new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+            );
+
+            $writer = new \BaconQrCode\Writer($renderer);
+
+            $qrCode = $writer->writeString($invoice->emcef_qr_code);
+
+            $invoice->qr_code_base64 =
+                'data:image/svg+xml;base64,' . base64_encode($qrCode);
+        }
+
         // Vérifier que le client a un email
         if (!$invoice->customer->email) {
             return response()->json([
@@ -320,11 +410,11 @@ class InvoiceController extends Controller
                 'statusLabels'  => $statusLabels,
             ], function ($mail) use ($invoice, $fullPath, $filename) {
                 $mail->to($invoice->customer->email, $invoice->customer->fullname)
-                     ->subject("Facture {$invoice->invoice_number} — {$invoice->organization->name}")
-                     ->attach($fullPath, [
-                         'as'   => $filename,
-                         'mime' => 'application/pdf',
-                     ]);
+                    ->subject("Facture {$invoice->invoice_number} — {$invoice->organization->name}")
+                    ->attach($fullPath, [
+                        'as'   => $filename,
+                        'mime' => 'application/pdf',
+                    ]);
             });
 
             // ── 4. Supprimer le PDF du storage ─────────────

@@ -75,6 +75,20 @@ const formatCurrency = (amount: number) =>
 
 const toDateInputValue = (value: string) => value.split("T")[0]
 
+const toUnitPriceTTC = (unitPriceHT: number, vatRate: number) =>
+  vatRate > 0 ? Math.round(unitPriceHT * (1 + vatRate)) : Math.round(unitPriceHT)
+
+const getLineTotalTTC = (line: Pick<InvoiceItem, "quantity" | "unit_price">) =>
+  Math.round(line.quantity * line.unit_price)
+
+const getLineTotalHT = (line: Pick<InvoiceItem, "quantity" | "unit_price" | "vat_rate">) => {
+  const lineTTC = getLineTotalTTC(line)
+
+  return line.vat_rate > 0
+    ? Math.round(lineTTC / (1 + line.vat_rate))
+    : lineTTC
+}
+
 export default function NewInvoicePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -143,7 +157,7 @@ export default function NewInvoicePage() {
                   id: String(item.id),
                   description: item.description,
                   quantity: item.quantity,
-                  unit_price: Number(item.unit_price),
+                  unit_price: toUnitPriceTTC(Number(item.unit_price), Number(item.vat_rate)),
                   vat_rate: Number(item.vat_rate),
                 }))
               : [{ ...defaultLine, id: "1" }]
@@ -184,38 +198,59 @@ export default function NewInvoicePage() {
   }
 
   const totals = useMemo(() => {
-    const totalHT = lines.reduce((accumulator, line) => accumulator + line.quantity * line.unit_price, 0)
-    const totalTVA = lines.reduce(
-      (accumulator, line) => accumulator + line.quantity * line.unit_price * line.vat_rate,
-      0
-    )
-    const totalTTC = totalHT + totalTVA
+    let totalHT = 0
+    let totalTVA = 0
+    let totalTTC = 0
 
-    return { totalHT, totalTVA, totalTTC }
+    lines.forEach((line) => {
+      const lineTTC = getLineTotalTTC(line)
+      const lineHT = getLineTotalHT(line)
+      const lineTVA = lineTTC - lineHT
+
+      totalHT += lineHT
+      totalTVA += lineTVA
+      totalTTC += lineTTC
+    })
+
+    return {
+      totalHT: Math.round(totalHT),
+      totalTVA: Math.round(totalTVA),
+      totalTTC: Math.round(totalTTC),
+    }
   }, [lines])
 
   const handleSubmit = async () => {
-    if (!selectedClient) {
-      setError("Veuillez sélectionner un client")
-      toast({
-        variant: "destructive",
-        title: "Erreur lors de l'enregistrement de la facture",
-        description: "Veuillez sélectionner un client",
-      })
-      return
-    }
+    // if (!selectedClient) {
+    //   setError("Veuillez sélectionner un client")
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Erreur lors de l'enregistrement de la facture",
+    //     description: "Veuillez sélectionner un client",
+    //   })
+    //   return
+    // }
 
     setLoading(true)
     setError("")
 
     try {
       const payload = {
-        customer_id: Number(selectedClient),
+        customer_id: selectedClient ? Number(selectedClient) : null,
         invoice_number: invoiceNumber,
         due_at: issueDate,
         echeance_at: dueDate,
         total_tva: totals.totalTVA,
-        items: lines.map(({ id, ...item }) => item),
+        items: lines.map(({ id, ...item }) => {
+          const lineTTC = getLineTotalTTC(item)
+          const lineHT = item.vat_rate > 0
+            ? Math.round(lineTTC / (1 + item.vat_rate))
+            : lineTTC
+
+          return {
+            ...item,
+            unit_price: Number((lineHT / item.quantity).toFixed(2)),
+          }
+        }),
       }
 
       const res = isEditMode
@@ -343,9 +378,9 @@ export default function NewInvoicePage() {
                         <TableRow>
                           <TableHead className="w-[40%]">Description</TableHead>
                           <TableHead>Qté</TableHead>
-                          <TableHead>Prix unitaire</TableHead>
+                          <TableHead>Prix unitaire TTC</TableHead>
                           <TableHead>TVA %</TableHead>
-                          <TableHead className="text-right">Total HT</TableHead>
+                          <TableHead className="text-right">Total TTC</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -404,7 +439,7 @@ export default function NewInvoicePage() {
                               </Select>
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {formatCurrency(line.quantity * line.unit_price)}
+                              {formatCurrency(getLineTotalTTC(line))}
                             </TableCell>
                             <TableCell>
                               <Button

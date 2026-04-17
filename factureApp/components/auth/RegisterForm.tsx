@@ -11,8 +11,8 @@ type Step = 'registration' | 'payment'
 
 const PLAN_PRICES: Record<string, number> = {
   free:     0,
-  pro:      3000,
-  business: 7000,
+  pro:      5000,
+  business: 12000,
 }
 
 const MONTH_OPTIONS = [
@@ -94,38 +94,82 @@ export default function RegisterForm() {
     setLoading(true)
 
     try {
-      // Créer la transaction FedaPay côté Laravel
-      const res = await axiosInstance.post('/payment/initiate', {
-        firstname:    paymentData.firstname,
-        lastname:     paymentData.lastname,
-        phone:        paymentData.phone,
-        amount:       totalPrice,
-        months:       paymentData.months,
-        plan:         formData.plan,
-        // Données org pour créer après paiement
-        org_name:     formData.name,
-        org_email:    formData.email,
-        org_phone:    formData.phone,
-        org_adresse:  formData.adresse,
+      // ── Ouvrir le Checkout FedaPay directement ────────────────
+      // @ts-ignore
+      const handler = window.FedaPay.init({
+        public_key: process.env.NEXT_PUBLIC_FEDAPAY_PUBLIC_KEY,
+        transaction: {
+          amount:      totalPrice,
+          description: `Abonnement FacturaPro Plan ${formData.plan} — ${paymentData.months} mois`,
+        },
+        customer: {
+          firstname: paymentData.firstname,
+          lastname:  paymentData.lastname,
+          email:     formData.email,
+          phone_number: {
+            number:  paymentData.phone,
+            country: 'BJ',
+          },
+        },
+
+        onComplete: async (response: {
+          reason:      string
+          transaction: { id: number; status: string }
+        }) => {
+
+          // Client a fermé sans payer
+          // @ts-ignore
+          if (response.reason === window.FedaPay.DIALOG_DISMISSED) {
+            setError("Paiement annulé.")
+            setLoading(false)
+            return
+          }
+
+          // ── Vérifier le paiement côté Laravel ─────────────────
+          try {
+            const verif = await axiosInstance.post('/verifier-paiement', {
+              transaction_id: response.transaction.id,
+              firstname:      paymentData.firstname,
+              lastname:       paymentData.lastname,
+              phone:          paymentData.phone,
+              amount:         totalPrice,
+              months:         paymentData.months,
+              plan:           formData.plan,
+              org_name:       formData.name,
+              org_email:      formData.email,
+              org_phone:      formData.phone,
+            })
+
+            if (verif.status === 200) {
+              // ── Créer l'organisation après paiement validé ─────
+              await createOrganization()
+            }
+
+          } catch (err: any) {
+            const message = getApiErrorMessage(err, "Erreur lors de la vérification")
+            setError(message)
+            toast({
+              variant:     "destructive",
+              title:       "Erreur de vérification",
+              description: message,
+            })
+          } finally {
+            setLoading(false)
+          }
+        },
       })
 
-      if (res.data.payment_url) {
-        // Stocker les données en attendant le retour de FedaPay
-        sessionStorage.setItem('pending_registration', JSON.stringify({
-          formData,
-          paymentData,
-          months: paymentData.months,
-        }))
-
-        // Rediriger vers FedaPay
-        window.location.href = res.data.payment_url
-      }
+      // ── Ouvrir la popup ───────────────────────────────────────
+      handler.open()
 
     } catch (error) {
-      const message = getApiErrorMessage(error, "Erreur lors de l'initialisation du paiement")
+      const message = getApiErrorMessage(error, "Erreur lors de l'ouverture du paiement")
       setError(message)
-      toast({ variant: "destructive", title: "Paiement impossible", description: message })
-    } finally {
+      toast({
+        variant:     "destructive",
+        title:       "Paiement impossible",
+        description: message,
+      })
       setLoading(false)
     }
   }
@@ -134,7 +178,10 @@ export default function RegisterForm() {
   async function createOrganization() {
     setLoading(true)
     try {
-      const res = await axiosInstance.post("/organizations", formData)
+      const res = await axiosInstance.post("/organizations", {
+        ...formData,
+        months: paymentData.months
+      })
       if (res.status === 201) {
         toast({
           title: "Organisation créée",

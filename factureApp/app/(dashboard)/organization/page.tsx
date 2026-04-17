@@ -18,9 +18,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Building2, Upload, Save, AlertTriangle, Loader2 } from "lucide-react"
+import { Building2, Upload, Save, AlertTriangle, Loader2, Lock } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
+import { Switch } from "@/components/ui/switch"
 
 export default function OrganizationPage() {
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,11 @@ export default function OrganizationPage() {
   plan_expires_at: string
   is_active: boolean
   adresse: string
-  logo:    string | File  // ← accepte les deux
+  logo:    string | File , // ← accepte les deux
+  ifu:  string
+  emcef_token: string
+  emcef_nim: string
+  emcef_active: boolean
 }>({
     name: '',
     email: '',
@@ -44,7 +49,11 @@ export default function OrganizationPage() {
     plan_expires_at: '',
     is_active: false,
     adresse: '',
-    logo:''
+    logo:'',
+    ifu:'',
+    emcef_token:'',
+    emcef_nim:'',
+    emcef_active:false
   })
 
   const PLAN_INFO = {
@@ -54,7 +63,7 @@ export default function OrganizationPage() {
     },
     pro: {
       price: '9€/mois',
-      features: 'Factures illimitées · 3 utilisateurs · Relances auto',
+      features: 'Factures illimitées · 5 utilisateurs · Relances auto',
     },
     business: {
       price: '25€/mois',
@@ -123,12 +132,49 @@ export default function OrganizationPage() {
     }
   }
 
+  const handleUpdateEmcef = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await axiosInstance.put('/organizations/emcef', {
+        ifu: formData.ifu,
+        emcef_token: formData.emcef_token,
+        emcef_nim: formData.emcef_nim,
+        emcef_active: formData.emcef_active
+      })
+
+      if(res.status === 200) {
+        
+        toast({
+          title: "EMCEF mis à jour",
+          description: "Les informations EMCEF ont été mises à jour avec succès.",
+        })
+      } else {
+        setError(res.data?.message || 'Une erreur est survenue lors de la mise à jour des informations EMCEF.')
+        toast({
+          variant: "destructive",
+          title: "Erreur lors de la mise à jour des informations EMCEF",
+          description: res.data?.message || 'Une erreur est survenue lors de la mise à jour des informations EMCEF.',
+        })
+      }
+    } catch (error) {
+      setError('Une erreur est survenue lors de la mise à jour des informations EMCEF.')
+      toast({
+        variant: "destructive",
+        title: "Erreur lors de la mise à jour des informations EMCEF",
+        description: 'Une erreur est survenue lors de la mise à jour des informations EMCEF.',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(()=>{
     const userRaw = localStorage.getItem('user')
     if (userRaw) {
       const user = JSON.parse(userRaw)
       const org  = user.organization
-      console.log("Org loaded from localStorage:", org)
 
       setFormData({
         name:    org.name    ?? '',
@@ -140,6 +186,10 @@ export default function OrganizationPage() {
         is_active: org.is_active ?? false,
         adresse: org.adresse ?? '',
         logo:    org.logo    ?? '',
+        ifu: org.ifu ?? '',
+        emcef_token: org.emcef_token ?? '',
+        emcef_nim: org.emcef_nim ?? '',
+        emcef_active: org.emcef_active ?? false
       })
 
     }
@@ -278,6 +328,74 @@ export default function OrganizationPage() {
             </CardContent>
           </Card>
 
+          {/* Organization EMCEF */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Informations supplémentaires
+              </CardTitle>
+              <CardDescription>
+                Ces informations sont nécessaires pour l&apos;intégration avec EMCEF.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form onSubmit={handleUpdateEmcef} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="ifu">IFU</Label>
+                    <Input
+                      id="ifu"
+                      value={formData.ifu}
+                      onChange={(e) => setFormData({ ...formData, ifu: e.target.value })}
+                      placeholder="Ex: 12345678901234"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="emcef_token">Token EMCEF</Label>
+                    <Input
+                      id="emcef_token"
+                      type="password"
+                      value={formData.emcef_token}
+                      onChange={(e) => setFormData({ ...formData, emcef_token: e.target.value })}
+                      placeholder="Token d'authentification pour EMCEF"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="emcef_nim">NIM EMCEF</Label>
+                    <Input
+                      id="emcef_nim"
+                      value={formData.emcef_nim}
+                      onChange={(e) => setFormData({ ...formData, emcef_nim: e.target.value })}
+                      placeholder="Numéro d'identification EMCEF"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="emcef_active">Actif EMCEF</Label>
+                    <Switch
+                      id="emcef_active"
+                      className="mt-3 ml-5"
+                      checked={formData.emcef_active}
+                      onCheckedChange={(checked) => setFormData({ ...formData, emcef_active: checked })}
+                    />
+                  </div>
+                </div>
+                <Button type="submit">
+                  {loading ? 
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Enregistrement...
+                    </> : 
+                    <>
+                      <Save className="h-4 w-4" />
+                      Enregistrer les modifications
+                    </>
+                  }
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
           {/* Current Plan */}
           <Card className="border-border/50">
             <CardHeader>
@@ -305,7 +423,11 @@ export default function OrganizationPage() {
                 <Button variant="outline">Changer de plan</Button>
               </div>
               <div className="text-sm text-muted-foreground">
-                Prochain renouvellement : <span className="font-medium text-foreground">{formData.plan_expires_at}</span>
+                Prochain renouvellement : <span className="font-medium text-foreground">{new Date(formData.plan_expires_at).toLocaleDateString('fr-FR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                })}</span>
               </div>
             </CardContent>
           </Card>

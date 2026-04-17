@@ -16,7 +16,7 @@ class PayementController extends Controller
 
         $transaction = Transaction::retrieve($request->transaction_id);
 
-        if ($transaction->status === 'success') {
+        if ($transaction->status === 'approved') {
 
             $payement = new Payement();
             $payement->firstname = $request->firstname;

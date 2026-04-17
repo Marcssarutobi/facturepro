@@ -21,8 +21,24 @@
             width: 100%;
         }
 
+        .page {
+            page-break-inside: avoid;
+        }
+
         .section-gap {
-            margin-bottom: 24px;
+            page-break-inside: avoid;
+        }
+
+        .lines-wrap {
+            page-break-inside: avoid;
+        }
+
+        .footer-wrap {
+            page-break-inside: avoid;
+        }
+
+        .section-gap {
+            margin-bottom: 16px;
         }
 
         .header-wrap {
@@ -47,20 +63,20 @@
         .card-light {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            padding: 18px;
+            padding: 14px;
             border-radius: 16px;
         }
 
         .card-plain {
             border: 1px solid #e2e8f0;
-            padding: 18px;
+            padding: 14px;
             border-radius: 16px;
         }
 
         .card-dark {
             background: #0f172a;
             color: #ffffff;
-            padding: 20px;
+            padding: 14px;
             border-radius: 16px;
         }
 
@@ -88,7 +104,7 @@
 
         .company-name {
             margin: 0 0 10px;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
         }
 
@@ -145,7 +161,7 @@
         }
 
         .lines-table th {
-            padding: 14px 16px;
+            padding: 10px 12px;
             background: #f8fafc;
             color: #94a3b8;
             text-align: left;
@@ -156,7 +172,7 @@
         }
 
         .lines-table td {
-            padding: 14px 16px;
+            padding: 10px 12px;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -198,6 +214,8 @@
 @php
     $formatMoney = fn ($amount) => number_format((float) $amount, 0, ',', ' ') . ' FCFA';
     $formatDate  = fn ($date)   => \Carbon\Carbon::parse($date)->translatedFormat('d M Y');
+    $getUnitPriceTtc = fn ($item) => round((float) $item->unit_price * (1 + (float) $item->vat_rate));
+    $getLineTotalTtc = fn ($item) => $item->quantity * $getUnitPriceTtc($item);
     $statusLabels = [
         'draft'     => 'Brouillon',
         'sent'      => 'Envoyee',
@@ -277,7 +295,7 @@
                 <td style="width: 50%;">
                     <div class="card-light">
                         <p class="label">Facturee a</p>
-                        <p class="section-title">{{ $invoice->customer->fullname ?? 'Client' }}</p>
+                        <p class="section-title">{{ $invoice->customer->fullname ?? $invoice->anonymous_customer_name }}</p>
                         <div class="muted">
                             <div>{{ $invoice->customer->email ?? 'Email non renseigne' }}</div>
                             @if($invoice->customer->phone ?? null)
@@ -309,9 +327,9 @@
                 <tr>
                     <th style="width: 40%;">Description</th>
                     <th style="width: 10%;">Qte</th>
-                    <th style="width: 18%;">Prix unitaire</th>
+                    <th style="width: 18%;">Prix unitaire TTC</th>
                     <th style="width: 12%;">TVA</th>
-                    <th class="text-right" style="width: 20%;">Total HT</th>
+                    <th class="text-right" style="width: 20%;">Total TTC</th>
                 </tr>
             </thead>
             <tbody>
@@ -319,10 +337,10 @@
                     <tr>
                         <td>{{ $item->description }}</td>
                         <td>{{ $item->quantity }}</td>
-                        <td>{{ $formatMoney($item->unit_price) }}</td>
+                        <td>{{ $formatMoney($getUnitPriceTtc($item)) }}</td>
                         <td>{{ number_format((float) $item->vat_rate * 100, 0, ',', ' ') }}%</td>
                         <td class="text-right">
-                            {{ $formatMoney($item->quantity * (float) $item->unit_price) }}
+                            {{ $formatMoney($getLineTotalTtc($item)) }}
                         </td>
                     </tr>
                 @endforeach
@@ -338,8 +356,7 @@
                     <div class="card-light">
                         <p class="section-title" style="font-size: 16px;">Note</p>
                         <div class="muted" style="margin-top: 8px;">
-                            Merci pour votre confiance. Cette facture a ete generee
-                            automatiquement depuis FacturaPro.
+                            Merci pour votre confiance. 
                         </div>
                     </div>
                 </td>
@@ -369,6 +386,44 @@
             </tr>
         </table>
     </div>
+
+    @if($invoice->is_normalized && $invoice->qr_code_base64)
+        <div style="border:1px solid #e2e8f0; padding:16px; border-radius:8px; margin-top:20px;">
+
+            <table style="width:100%;">
+                <tr>
+                    <td style="width:120px;">
+                        <img src="{{ $invoice->qr_code_base64 }}" style="width:80px;">
+                    </td>
+                    <td>
+
+                        <p style="text-align:center; font-size:12px;">Code MECeF/DGI</p>
+                        <p style="text-align:center; font-weight:bold;">
+                            {{ $invoice->emcef_code }}
+                        </p>
+
+                        <table style="width:100%; margin-top:10px;">
+                            <tr>
+                                <td>MECeF NIM :</td>
+                                <td style="text-align:right;">{{ $invoice->emcef_nim }}</td>
+                            </tr>
+                            <tr>
+                                <td>MECeF Compteurs :</td>
+                                <td style="text-align:right;">{{ $invoice->emcef_counters }}</td>
+                            </tr>
+                            <tr>
+                                <td>MECeF Heure :</td>
+                                <td style="text-align:right;">
+                                    {{ \Carbon\Carbon::parse($invoice->emcef_datetime)->format('d/m/Y H:i') }}
+                                </td>
+                            </tr>
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
 
 </div>
 </body>

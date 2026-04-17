@@ -90,6 +90,7 @@ class SendInvoiceReminders extends Command
                     'day_offset' => $daysOverdue,
                     'sent_at'    => now(),
                     'status'     => 'envoyée',
+                    'organization_id' => $invoice->organization_id,
                 ]);
 
                 $count++;
@@ -100,6 +101,7 @@ class SendInvoiceReminders extends Command
                     'day_offset' => $daysOverdue,
                     'sent_at'    => now(),
                     'status'     => 'échouée',
+                    'organization_id' => $invoice->organization_id,
                 ]);
                 $this->error("Erreur pour {$invoice->invoice_number} : {$e->getMessage()}");
             }

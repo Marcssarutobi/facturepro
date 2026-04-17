@@ -22,11 +22,11 @@ const plans = [
   {
     name: "Pro",
     plan:'pro',
-    price: "3000",
+    price: "5000",
     description: "Pour les freelances actifs",
     features: [
       "Factures illimitées",
-      "3 utilisateurs",
+      "5 utilisateurs",
       "Relances automatiques",
       "Tableau de bord complet",
       "Envoi de factures par email",
@@ -37,7 +37,7 @@ const plans = [
   {
     name: "Business",
     plan:'business',
-    price: "7000",
+    price: "12000",
     description: "Pour les équipes",
     features: [
       "Factures illimitées",

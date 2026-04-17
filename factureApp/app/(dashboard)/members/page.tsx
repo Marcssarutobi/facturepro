@@ -217,7 +217,7 @@ export default function MembersPage() {
   // Récupérer les infos de l'org depuis localStorage
   const userRaw  = typeof window !== 'undefined' ? localStorage.getItem('user') : null
   const orgPlan  = userRaw ? JSON.parse(userRaw)?.organization?.plan : 'free'
-  const maxUsers = { free: 1, pro: 3, business: '∞' }[orgPlan as string] ?? 1
+  const maxUsers = { free: 1, pro: 5, business: '∞' }[orgPlan as string] ?? 1
 
   return (
     <>

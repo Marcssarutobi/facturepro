@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('months');
             $table->string('plan');
             $table->string('org_name');
-            $table->string('org_email')->unique();
+            $table->string('org_email');
             $table->string('org_phone');
             $table->timestamps();
         });

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class OrganizationController extends Controller
 {
@@ -32,6 +33,7 @@ class OrganizationController extends Controller
             'email'   => 'required|email|unique:organizations,email',
             'phone'   => 'nullable|string|max:20',
             'plan'    => 'required|in:free,pro,business',
+            'months'  => 'nullable|integer|min:1',
             'adresse' => 'required|string',
             'logo'    => 'nullable|image|max:2048',
         ]);
@@ -39,6 +41,14 @@ class OrganizationController extends Controller
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
             $validated['logo'] = url(Storage::url($path));
+        }
+
+        // ✅ LOGIQUE EXPIRATION
+        if ($validated['plan'] === 'free') {
+            $validated['plan_expires_at'] = null;
+        } else {
+            $months = $validated['months'] ?? 1;
+            $validated['plan_expires_at'] = now()->addMonths($months);
         }
 
         // Appliquer les limites du plan choisi
@@ -100,6 +110,13 @@ class OrganizationController extends Controller
                 'can_add_user'     => $organization->canAddUser(),
                 'can_create_invoice' => $organization->canCreateInvoice(),
             ]),
+            'emcef' => [
+                'ifu'          => $organization->ifu,
+                'emcef_nim'    => $organization->emcef_nim,
+                'emcef_active' => $organization->emcef_active,
+                'has_token'    => !empty($organization->emcef_token), // ne pas exposer le token
+                'can_normalize'=> $organization->canNormalize(),
+            ],
         ]);
     }
 
@@ -151,5 +168,88 @@ class OrganizationController extends Controller
             'success' => true,
             'message' => 'Organisation supprimée',
         ]);
+    }
+
+    // PUT /api/organization/emcef — sauvegarder les paramètres
+    public function updateemcef(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ifu'         => 'required|string|max:13',
+            'emcef_token' => 'required|string',
+            'emcef_nim'   => 'nullable|string|max:20',
+        ]);
+
+        $org = $request->user()->organization;
+
+        // Vérifier que le token est valide avant de sauvegarder
+        $isValid = $this->verifyToken($request->emcef_token, $request->ifu);
+
+        if (!$isValid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token e-MCF invalide ou expiré. Vérifiez vos paramètres DGI.',
+            ], 422);
+        }
+
+        $org->update([
+            'ifu'         => $request->ifu,
+            'emcef_token' => $request->emcef_token,
+            'emcef_nim'   => $request->emcef_nim,
+            'emcef_active'=> true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Paramètres e-MCF enregistrés et vérifiés avec succès.',
+            'data'    => [
+                'ifu'          => $org->ifu,
+                'emcef_nim'    => $org->emcef_nim,
+                'emcef_active' => $org->emcef_active,
+                'can_normalize'=> $org->canNormalize(),
+            ],
+        ]);
+    }
+
+    // DELETE /api/organization/emcef — désactiver e-MCF
+    public function disable(Request $request): JsonResponse
+    {
+        $request->user()->organization->update([
+            'emcef_active' => false,
+            'emcef_token'  => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'e-MCF désactivé.',
+        ]);
+    }
+
+    // Vérifier que le token est valide via l'API e-MCF
+    private function verifyToken(string $token, string $ifu): bool
+    {
+        try {
+            $url = app()->environment('production')
+                ? 'https://sygmef.impots.bj/emcf/api/invoice'
+                : 'https://developper.impots.bj/sygmef-emcf/api/invoice';
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/json',
+                'Accept'        => 'application/json',
+            ])->timeout(10)->get($url);
+
+            if (!$response->successful()) return false;
+
+            $data = $response->json();
+
+            // Vérifier que le token est valide et que l'IFU correspond
+            return isset($data['status'])
+                && $data['status'] === true
+                && isset($data['ifu'])
+                && $data['ifu'] === $ifu;
+
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

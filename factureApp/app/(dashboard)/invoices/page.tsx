@@ -51,6 +51,8 @@ import {
   X,
   Paperclip,
   Send,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
@@ -72,6 +74,15 @@ type Invoice = {
   total_ht: string
   total_ttc: string
   total_tva: string
+  emcef_uid: string
+  emcef_code:string
+  emcef_qr_code:string
+  emcef_nim: string
+  emcef_counters: string
+  emcef_datetime: string
+  anonymous_customer_name: string
+  qr_code_base64: string
+  is_normalized: boolean
   customer_id: number
   customer: Customer | null
   created_at: string
@@ -123,6 +134,16 @@ const formatDate = (date: string) =>
 
 const formatPercent = (rate: string | number) => `${Number(rate) * 100}%`
 
+const getUnitPriceTTC = (unitPrice: string | number, vatRate: string | number) => {
+  const priceHT = Number(unitPrice)
+  const vat = Number(vatRate)
+
+  return Math.round(vat > 0 ? priceHT * (1 + vat) : priceHT)
+}
+
+const getLineTotalTTC = (item: InvoiceDetailItem) =>
+  Math.round(getUnitPriceTTC(item.unit_price, item.vat_rate) * item.quantity)
+
 const getStatusLabel = (status: InvoiceStatus) =>
   ({
     draft: "Brouillon",
@@ -170,6 +191,9 @@ export default function InvoicesPage() {
   const [isSendDialogOpen, setIsSendDialogOpen]   = useState(false)
   const [sendMessage, setSendMessage]             = useState('')
   const [sendLoading, setSendLoading]             = useState(false)
+  const [isNormalizing, setIsNormalizing] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null)
 
   const fetchInvoices = async (page = 1) => {
     setLoading(true)
@@ -327,6 +351,37 @@ export default function InvoicesPage() {
     }
   }
 
+  const handleNormaliseInvoice = async () => {
+    if (!selectedInvoiceId) return
+
+    setIsNormalizing(true)
+
+    try {
+      const res = await axiosInstance.post(
+        `/invoices/${selectedInvoiceId}/normalize`,
+        {}
+      )
+
+      if (res.status === 200) {
+        await fetchInvoices()
+        toast({
+          title: "Succès",
+          description: "Facture normalisée avec succès",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: 'Erreur lors de la normalisation. Seules les factures envoyées ou payées peuvent être normalisées.',
+      })
+    } finally {
+      setIsNormalizing(false)
+      setIsModalOpen(false)
+      setSelectedInvoiceId(null)
+    }
+  }
+
   return (
     <>
       <Header title="Factures" />
@@ -373,6 +428,7 @@ export default function InvoicesPage() {
                     <TableHead className="hidden md:table-cell">Montant TTC</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="hidden lg:table-cell">Échéance</TableHead>
+                    <TableHead className="hidden lg:table-cell">Normalisée</TableHead>
                     <TableHead className="w-[50px]">
                       <span className="sr-only">Actions</span>
                     </TableHead>
@@ -396,7 +452,7 @@ export default function InvoicesPage() {
                       <TableRow key={invoice.id}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell className="max-w-[150px] truncate">
-                          {invoice.customer?.fullname ?? "—"}
+                          {invoice.customer?.fullname ?? invoice.anonymous_customer_name}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {formatCurrency(invoice.total_ht)}
@@ -409,8 +465,20 @@ export default function InvoicesPage() {
                             {getStatusLabel(invoice.status)}
                           </Badge>
                         </TableCell>
+                        
                         <TableCell className="hidden lg:table-cell">
                           {formatDate(invoice.echeance_at)}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {invoice.is_normalized ? (
+                            <Badge  className="bg-green-100 text-green-700">
+                              Normalisée
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-xs">
+                              Non normalisée
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -446,16 +514,30 @@ export default function InvoicesPage() {
                                   Marquer comme brouillon
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem
-                                className="gap-2"
-                                onClick={async () => {
-                                  await loadInvoiceDetails(invoice.id)
-                                  setIsSendDialogOpen(true)
-                                }}
-                              >
-                                <Send className="h-4 w-4" />
-                                Envoyer par email
-                              </DropdownMenuItem>
+                              {invoice.customer_id && (
+                                <DropdownMenuItem
+                                  className="gap-2"
+                                  onClick={async () => {
+                                    await loadInvoiceDetails(invoice.id)
+                                    setIsSendDialogOpen(true)
+                                  }}
+                                >
+                                  <Send className="h-4 w-4" />
+                                  Envoyer par email
+                                </DropdownMenuItem>
+                              )}
+                              {!invoice.is_normalized && (
+                                <DropdownMenuItem
+                                  className="gap-2"
+                                  onClick={() => {
+                                    setSelectedInvoiceId(invoice.id)
+                                    setIsModalOpen(true)
+                                  }}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Normaliser la facture
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 className="gap-2"
                                 onClick={() => handleEdit(invoice.id)}
@@ -562,7 +644,7 @@ export default function InvoicesPage() {
                     <p className="text-sm font-medium text-foreground">Client</p>
                     <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                       <p className="font-medium text-foreground">
-                        {selectedInvoice.customer?.fullname ?? "—"}
+                        {selectedInvoice.customer?.fullname ?? selectedInvoice.anonymous_customer_name}
                       </p>
                       <p>{selectedInvoice.customer?.email ?? "Email non renseigné"}</p>
                     </div>
@@ -604,9 +686,9 @@ export default function InvoicesPage() {
                       <TableRow>
                         <TableHead>Description</TableHead>
                         <TableHead>Qté</TableHead>
-                        <TableHead>Prix unitaire</TableHead>
+                        <TableHead>Prix unitaire TTC</TableHead>
                         <TableHead>TVA</TableHead>
-                        <TableHead className="text-right">Total HT</TableHead>
+                        <TableHead className="text-right">Total TTC</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -621,10 +703,10 @@ export default function InvoicesPage() {
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>{formatCurrency(item.unit_price)}</TableCell>
+                            <TableCell>{formatCurrency(getUnitPriceTTC(item.unit_price, item.vat_rate))}</TableCell>
                             <TableCell>{formatPercent(item.vat_rate)}</TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(item.quantity * Number(item.unit_price))}
+                              {formatCurrency(getLineTotalTTC(item))}
                             </TableCell>
                           </TableRow>
                         ))
@@ -665,6 +747,61 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                 </div>
+                {selectedInvoice.is_normalized && (
+                  <div className="border rounded-lg p-4 bg-white">
+
+                    {/* Titre */}
+                    <p className="text-xs text-center text-muted-foreground uppercase tracking-wider mb-3">
+                      -- Éléments de sécurité de la facture normalisée --
+                    </p>
+
+                    <div className="border rounded-md p-4 flex gap-4 items-center">
+
+                      {/* QR CODE */}
+                      <div className="shrink-0">
+                        <img
+                          src={selectedInvoice.qr_code_base64}
+                          alt="QR Code"
+                          className="w-[110px] h-[110px] object-contain"
+                        />
+                      </div>
+
+                      {/* INFOS */}
+                      <div className="flex-1">
+
+                        {/* Code principal */}
+                        <p className="text-center text-sm font-medium text-muted-foreground">
+                          Code MECeF/DGI
+                        </p>
+
+                        <p className="text-center font-semibold text-sm mb-3">
+                          {selectedInvoice.emcef_code}
+                        </p>
+
+                        {/* Détails */}
+                        <div className="grid grid-cols-2 gap-y-1 text-sm">
+
+                          <span className="text-muted-foreground">MECeF NIM :</span>
+                          <span className="text-right font-medium">
+                            {selectedInvoice.emcef_nim}
+                          </span>
+
+                          <span className="text-muted-foreground">MECeF Compteurs :</span>
+                          <span className="text-right font-medium">
+                            {selectedInvoice.emcef_counters}
+                          </span>
+
+                          <span className="text-muted-foreground">MECeF Heure :</span>
+                          <span className="text-right font-medium">
+                            {new Date(selectedInvoice.emcef_datetime).toLocaleString("fr-FR")}
+                          </span>
+
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -788,7 +925,7 @@ export default function InvoicesPage() {
                         </p>
                         <div className="mt-3 space-y-1">
                           <p className="text-lg font-semibold text-slate-900">
-                            {selectedInvoice.customer?.fullname ?? "Client"}
+                            {selectedInvoice.customer?.fullname ?? selectedInvoice.anonymous_customer_name}
                           </p>
                           <p className="text-sm text-slate-500">
                             {selectedInvoice.customer?.email ?? "Email non renseigné"}
@@ -817,9 +954,9 @@ export default function InvoicesPage() {
                           <tr className="bg-slate-50 text-left text-xs uppercase tracking-[0.22em] text-slate-400">
                             <th className="px-6 py-4 font-semibold">Description</th>
                             <th className="px-6 py-4 font-semibold">Qté</th>
-                            <th className="px-6 py-4 font-semibold">Prix</th>
+                            <th className="px-6 py-4 font-semibold">Prix unitaire TTC</th>
                             <th className="px-6 py-4 font-semibold">TVA</th>
-                            <th className="px-6 py-4 text-right font-semibold">Total</th>
+                            <th className="px-6 py-4 text-right font-semibold">Total TTC</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -830,13 +967,13 @@ export default function InvoicesPage() {
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-600">{item.quantity}</td>
                               <td className="px-6 py-4 text-sm text-slate-600">
-                                {formatCurrency(item.unit_price)}
+                                {formatCurrency(getUnitPriceTTC(item.unit_price, item.vat_rate))}
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-600">
                                 {formatPercent(item.vat_rate)}
                               </td>
                               <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
-                                {formatCurrency(item.quantity * Number(item.unit_price))}
+                                {formatCurrency(getLineTotalTTC(item))}
                               </td>
                             </tr>
                           ))}
@@ -868,6 +1005,63 @@ export default function InvoicesPage() {
                         </div>
                       </div>
                     </div>
+
+                    {selectedInvoice.is_normalized && (
+                      <div className="border rounded-lg p-4 bg-white">
+
+                        {/* Titre */}
+                        <p className="text-xs text-center text-muted-foreground uppercase tracking-wider mb-3">
+                          -- Éléments de sécurité de la facture normalisée --
+                        </p>
+
+                        <div className="border rounded-md p-4 flex gap-4 items-center">
+
+                          {/* QR CODE */}
+                          <div className="shrink-0">
+                            <img
+                              src={selectedInvoice.qr_code_base64}
+                              alt="QR Code"
+                              className="w-[110px] h-[110px] object-contain"
+                            />
+                          </div>
+
+                          {/* INFOS */}
+                          <div className="flex-1">
+
+                            {/* Code principal */}
+                            <p className="text-center text-sm font-medium text-muted-foreground">
+                              Code MECeF/DGI
+                            </p>
+
+                            <p className="text-center font-semibold text-sm mb-3">
+                              {selectedInvoice.emcef_code}
+                            </p>
+
+                            {/* Détails */}
+                            <div className="grid grid-cols-2 gap-y-1 text-sm">
+
+                              <span className="text-muted-foreground">MECeF NIM :</span>
+                              <span className="text-right font-medium">
+                                {selectedInvoice.emcef_nim}
+                              </span>
+
+                              <span className="text-muted-foreground">MECeF Compteurs :</span>
+                              <span className="text-right font-medium">
+                                {selectedInvoice.emcef_counters}
+                              </span>
+
+                              <span className="text-muted-foreground">MECeF Heure :</span>
+                              <span className="text-right font-medium">
+                                {new Date(selectedInvoice.emcef_datetime).toLocaleString("fr-FR")}
+                              </span>
+
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               ) : null}
@@ -879,7 +1073,9 @@ export default function InvoicesPage() {
           setIsSendDialogOpen(open)
           if (!open) {
             setSendMessage('')
-            setSelectedInvoice(null)
+            setTimeout(() => {
+              setSelectedInvoice(null)
+            }, 0)
           }
         }}>
           <DialogContent>
@@ -992,6 +1188,36 @@ export default function InvoicesPage() {
                     Supprimer définitivement
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Normalisation de la facture</DialogTitle>
+            </DialogHeader>
+
+            <div className="py-4 text-sm text-muted-foreground">
+              {isNormalizing
+                ? "Normalisation en cours..."
+                : "Voulez-vous vraiment normaliser cette facture ?"}
+            </div>
+
+            <DialogFooter>
+              {!isNormalizing && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Annuler
+                </Button>
+              )}
+
+              <Button onClick={handleNormaliseInvoice} disabled={isNormalizing}>
+                {isNormalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isNormalizing ? "Traitement..." : "Confirmer"}
               </Button>
             </DialogFooter>
           </DialogContent>

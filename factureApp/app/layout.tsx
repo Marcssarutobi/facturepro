@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
+import Script from "next/script"
 import './globals.css'
 
 const inter = Inter({ 
@@ -43,6 +44,10 @@ export default function RootLayout({
         {children}
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <Script
+          src="https://cdn.fedapay.com/checkout.js?v=1.1.7"
+          strategy="beforeInteractive"
+        />
       </body>
     </html>
   )

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->integer('day_offset');   // 7 ou 14 — nombre de jours après échéance
             $table->timestamp('sent_at')->nullable(); // quand l'email a été envoyé
             $table->enum('status', ['envoyée', 'échouée', 'en_attente'])->default('en_attente'); // statut de la relance
+            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->timestamps();
         });
     }
