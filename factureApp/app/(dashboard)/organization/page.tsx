@@ -54,6 +54,7 @@ type OrganizationFormData = {
   plan_expires_at: string
   is_active: boolean
   adresse: string
+  country?: string
   logo: string | File
   ifu: string
   emcef_token: string
@@ -239,6 +240,7 @@ export default function OrganizationPage() {
   const [planChangeError, setPlanChangeError] = useState("")
   const [formData, setFormData] = useState<OrganizationFormData>(INITIAL_FORM_DATA)
   const [paymentData, setPaymentData] = useState<PaymentFormData>(INITIAL_PAYMENT_DATA)
+  const [initialLoad, setInitialLoad] = useState(true)
 
   const currentPlanInfo =
     formData.plan && formData.plan in PLAN_INFO
@@ -273,6 +275,7 @@ export default function OrganizationPage() {
       is_active: organization.is_active ?? prev.is_active,
       adresse: organization.adresse ?? prev.adresse,
       logo: organization.logo !== undefined ? organization.logo : prev.logo,
+      country: organization.country ?? prev.country,
       ifu: organization.ifu ?? prev.ifu,
       emcef_token: organization.emcef_token ?? prev.emcef_token,
       emcef_nim: organization.emcef_nim ?? prev.emcef_nim,
@@ -285,6 +288,7 @@ export default function OrganizationPage() {
     if (!user) {
       return
     }
+
 
     user.organization = {
       ...(user.organization ?? {}),
@@ -337,6 +341,7 @@ export default function OrganizationPage() {
       form.append("name", formData.name)
       form.append("email", formData.email)
       form.append("phone", formData.phone)
+      form.append("country", formData.country ?? '')
       form.append("adresse", formData.adresse)
 
       if (formData.logo instanceof File) {
@@ -614,6 +619,7 @@ export default function OrganizationPage() {
       plan_expires_at: org.plan_expires_at ? String(org.plan_expires_at) : "",
       is_active: Boolean(org.is_active ?? false),
       adresse: org.adresse ?? "",
+      country: org.country ?? "",
       logo: (org.logo as string) ?? "",
       ifu: org.ifu ?? "",
       emcef_token: org.emcef_token ?? "",
@@ -631,6 +637,26 @@ export default function OrganizationPage() {
       phone: org.phone ?? prev.phone,
       plan: org.plan === "business" ? "business" : "pro",
     }))
+
+    // Fetch fresh organization data
+    const fetchOrganization = async () => {
+      try {
+        const orgId = user.organization_id || org.id
+        if (!orgId) return
+
+        const res = await axiosInstance.get(`/organizations/${orgId}`)
+        const freshOrg = res.data?.data ?? {}
+
+        syncOrganizationState(freshOrg)
+        syncOrganizationStorage(freshOrg)
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'organisation:', error)
+      } finally {
+        setInitialLoad(false)
+      }
+    }
+
+    fetchOrganization()
   }, [])
 
   return (
@@ -859,7 +885,32 @@ export default function OrganizationPage() {
       </Dialog>
 
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-        <div className="mx-auto max-w-3xl space-y-6">
+        {initialLoad ? (
+          <div className="mx-auto max-w-3xl space-y-6">
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Informations de l&apos;organisation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="h-10 bg-muted animate-pulse rounded" />
+                    <div className="h-10 bg-muted animate-pulse rounded" />
+                  </div>
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                  <div className="h-10 bg-muted animate-pulse rounded" />
+                  <div className="h-20 bg-muted animate-pulse rounded" />
+                  <div className="h-10 bg-muted animate-pulse rounded w-32" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="mx-auto max-w-3xl space-y-6">
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -889,6 +940,15 @@ export default function OrganizationPage() {
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="orgCountry">Pays</Label>
+                  <Input
+                    id="orgCountry"
+                    value={formData.country ?? ''}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    placeholder="Ex: Benin, France..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="orgAddress">Adresse</Label>
@@ -985,79 +1045,82 @@ export default function OrganizationPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Informations supplementaires
-              </CardTitle>
-              <CardDescription>
-                Ces informations sont necessaires pour l&apos;integration avec EMCEF.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <form onSubmit={handleUpdateEmcef} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="ifu">IFU</Label>
-                    <Input
-                      id="ifu"
-                      value={formData.ifu}
-                      onChange={(e) => setFormData({ ...formData, ifu: e.target.value })}
-                      placeholder="Ex: 12345678901234"
-                    />
+          {(formData.country?.toLowerCase().trim() === "bénin" || formData.country?.toLowerCase().trim() === "benin") && (
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Informations supplementaires
+                </CardTitle>
+                <CardDescription>
+                  Ces informations sont necessaires pour l&apos;integration avec EMCEF.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleUpdateEmcef} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="ifu">IFU</Label>
+                      <Input
+                        id="ifu"
+                        value={formData.ifu}
+                        onChange={(e) => setFormData({ ...formData, ifu: e.target.value })}
+                        placeholder="Ex: 12345678901234"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emcef_token">Token EMCEF</Label>
+                      <Input
+                        id="emcef_token"
+                        type="password"
+                        value={formData.emcef_token}
+                        onChange={(e) => setFormData({ ...formData, emcef_token: e.target.value })}
+                        placeholder="Token d'authentification pour EMCEF"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emcef_nim">NIM EMCEF</Label>
+                      <Input
+                        id="emcef_nim"
+                        value={formData.emcef_nim}
+                        onChange={(e) => setFormData({ ...formData, emcef_nim: e.target.value })}
+                        placeholder="Numero d'identification EMCEF"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emcef_active">Actif EMCEF</Label>
+                      <Switch
+                        id="emcef_active"
+                        className="mt-3 ml-5"
+                        checked={formData.emcef_active}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, emcef_active: checked })
+                        }
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="emcef_token">Token EMCEF</Label>
-                    <Input
-                      id="emcef_token"
-                      type="password"
-                      value={formData.emcef_token}
-                      onChange={(e) => setFormData({ ...formData, emcef_token: e.target.value })}
-                      placeholder="Token d'authentification pour EMCEF"
-                    />
-                  </div>
+                  <Button type="submit" disabled={emcefLoading}>
+                    {emcefLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Enregistrer les modifications
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
-                  <div>
-                    <Label htmlFor="emcef_nim">NIM EMCEF</Label>
-                    <Input
-                      id="emcef_nim"
-                      value={formData.emcef_nim}
-                      onChange={(e) => setFormData({ ...formData, emcef_nim: e.target.value })}
-                      placeholder="Numero d'identification EMCEF"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="emcef_active">Actif EMCEF</Label>
-                    <Switch
-                      id="emcef_active"
-                      className="mt-3 ml-5"
-                      checked={formData.emcef_active}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, emcef_active: checked })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" disabled={emcefLoading}>
-                  {emcefLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Enregistrement...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      Enregistrer les modifications
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
 
           <Card className="border-border/50">
             <CardHeader>
@@ -1172,6 +1235,7 @@ export default function OrganizationPage() {
             </CardContent>
           </Card>
         </div>
+        )}
       </main>
     </>
   )

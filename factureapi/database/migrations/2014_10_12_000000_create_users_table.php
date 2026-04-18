@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
             $table->enum('role',['member','admin','superAdmin']);
             $table->foreignId('invited_by')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('status', ['actif','suspendu','inactif'])->default('actif');

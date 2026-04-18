@@ -369,11 +369,17 @@ export default function InvoicesPage() {
           description: "Facture normalisée avec succès",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error(error)
+      const message =
+        error?.response?.data?.message ||
+        'Erreur lors de la normalisation. Seules les factures envoyées ou payées peuvent être normalisées.'
+
+      console.log(message)
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: 'Erreur lors de la normalisation. Seules les factures envoyées ou payées peuvent être normalisées.',
+        description: message,
       })
     } finally {
       setIsNormalizing(false)
@@ -1200,9 +1206,17 @@ export default function InvoicesPage() {
             </DialogHeader>
 
             <div className="py-4 text-sm text-muted-foreground">
-              {isNormalizing
-                ? "Normalisation en cours..."
-                : "Voulez-vous vraiment normaliser cette facture ?"}
+              <p>
+                {isNormalizing
+                  ? "Normalisation en cours..."
+                  : "Voulez-vous vraiment normaliser cette facture ?"}
+              </p>
+               {!isNormalizing && (
+                  <p className="text-foreground font-semibold text-red-600 mt-2">
+                    NB : Assurez-vous que toutes les informations de la facture sont correctes. 
+                    Après normalisation, aucune modification ne sera possible.
+                  </p>
+                )}
             </div>
 
             <DialogFooter>

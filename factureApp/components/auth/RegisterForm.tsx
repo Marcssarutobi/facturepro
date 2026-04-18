@@ -36,6 +36,7 @@ export default function RegisterForm() {
     phone:   "",
     plan:    "free",
     adresse: "",
+    country: "",
   })
 
   const [paymentData, setPaymentData] = useState({
@@ -62,7 +63,7 @@ export default function RegisterForm() {
     event.preventDefault()
     setError("")
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.adresse) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.adresse || !formData.country) {
       const message = "Tous les champs sont requis."
       setError(message)
       toast({ variant: "destructive", title: "Formulaire incomplet", description: message })
@@ -239,6 +240,19 @@ export default function RegisterForm() {
               placeholder="Téléphone de contact"
               required
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Pays</label>
+            <input
+              type="text"
+              value={formData.country}
+              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Pays de l'organisation"
+              required
+            />
+             <p className="mt-1 text-xs text-muted-foreground">Veuillez entrer le pays où votre organisation est basée.</p>
           </div>
 
           <div>

@@ -2,19 +2,56 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { revenueData } from "@/lib/data"
+import { useEffect, useState } from "react"
+import axiosInstance from "@/lib/axiosInstance"
+
+interface MonthlyRevenue {
+  month: string
+  revenue: number
+}
 
 export function RevenueChart() {
+  const [data, setData] = useState<MonthlyRevenue[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await axiosInstance.get('/dashboard')
+        setData(response.data.charts.monthly_revenue)
+      } catch (error) {
+        console.error('Erreur lors du chargement du graphique:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboard()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle>Chiffre d&apos;affaires</CardTitle>
+          <CardDescription>Évolution sur les 12 derniers mois</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] bg-muted animate-pulse rounded" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="border-border/50">
       <CardHeader>
         <CardTitle>Chiffre d&apos;affaires</CardTitle>
-        <CardDescription>Évolution sur les 6 derniers mois</CardDescription>
+        <CardDescription>Évolution sur les 12 derniers mois</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueData}>
+            <BarChart data={data}>
               <XAxis
                 dataKey="month"
                 stroke="hsl(var(--muted-foreground))"
@@ -49,11 +86,7 @@ export function RevenueChart() {
                   return null
                 }}
               />
-              <Bar
-                dataKey="revenue"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-              />
+              <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

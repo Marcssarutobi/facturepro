@@ -36,6 +36,7 @@ class OrganizationController extends Controller
             'plan'    => 'required|in:free,pro,business',
             'months'  => 'nullable|integer|min:1',
             'adresse' => 'required|string',
+            'country' => 'required|string',
             'logo'    => 'nullable|image|max:2048',
         ]);
 
@@ -130,6 +131,7 @@ class OrganizationController extends Controller
             'phone'   => 'nullable|string|max:20',
             'plan'    => 'sometimes|in:free,pro,business',
             'adresse' => 'sometimes|string',
+            'country' => 'nullable|string|max:255',
             'logo'    => 'nullable|image|max:2048',
             'plan_expires_at' => 'nullable|date',
             'is_active'       => 'sometimes|boolean',

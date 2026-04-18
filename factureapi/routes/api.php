@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PayementController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -55,5 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send']);
     Route::post('/invoices/{invoice}/normalize', [InvoiceNormalizationController::class, 'normalize']);
 
-    
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+
 });

@@ -12,7 +12,7 @@ class Organization extends Model
 
     protected $fillable = [
         'name', 'adresse', 'logo', 'plan',
-        'plan_started_at', 'plan_expires_at',
+        'plan_started_at', 'plan_expires_at','country',
         'is_active', 'max_users', 'max_invoices', 'email', 'phone',
         'ifu',           // ← nouveau
         'emcef_token',   // ← nouveau

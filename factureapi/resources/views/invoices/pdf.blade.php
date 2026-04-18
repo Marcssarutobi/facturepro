@@ -94,7 +94,7 @@
         }
 
         .org-logo {
-            width: 52px;
+            width: 150px;
             height: 52px;
             border-radius: 10px;
             object-fit: contain;
@@ -241,16 +241,27 @@
                 <td style="width: 56%;">
 
                     {{-- Logo ou initiale --}}
-                    @if($invoice->organization->logo_base64 ?? null)
+                    @php
+                        $org = $invoice->organization;
+                        $isFreePlan = ($org->plan ?? 'free') === 'free';
+                        $hasLogo = !empty($org->logo);
+                    @endphp
+
+                    @if(!$isFreePlan && $hasLogo)
+                        {{-- Logo de l'organisation --}}
                         <img
-                            src="{{ $invoice->organization->logo_base64 }}"
-                            alt="{{ $invoice->organization->name }}"
+                            src="{{ public_path('storage/' . $org->logo) }}"
+                            alt="{{ $org->name }}"
                             class="org-logo"
                         >
                     @else
-                        <div class="brand-mark">
-                            {{ strtoupper(substr($invoice->organization->name ?? 'F', 0, 1)) }}
-                        </div>
+                        {{-- Logo par défaut --}}
+                        <img
+                            src="{{ public_path('/logoFacture.png') }}"
+                            alt="Logo par défaut"
+                            class="org-logo"
+                            width="150"
+                        >
                     @endif
 
                     <h1 class="company-name">{{ $invoice->organization->name ?? 'FacturaPro' }}</h1>
@@ -356,7 +367,7 @@
                     <div class="card-light">
                         <p class="section-title" style="font-size: 16px;">Note</p>
                         <div class="muted" style="margin-top: 8px;">
-                            Merci pour votre confiance. 
+                            Merci pour votre confiance.
                         </div>
                     </div>
                 </td>

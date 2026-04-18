@@ -241,11 +241,12 @@ class InvoiceController extends Controller
 
         $validated = $request->validate([
             'customer_id' => [
-                'sometimes',
+                'nullable',
                 Rule::exists('customers', 'id')->where(
                     fn ($query) => $query->where('organization_id', $request->user()->organization_id)
                 ),
             ],
+            'anonymous_customer_name' => 'nullable|string|max:255',
             'invoice_number' => [
                 'sometimes',
                 'string',
