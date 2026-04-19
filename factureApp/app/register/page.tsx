@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import RegisterForm from '@/components/auth/RegisterForm';
 
 export default function RegisterPage() {
@@ -37,7 +38,10 @@ export default function RegisterPage() {
           <div className="w-full max-w-md">
             <h1 className="text-2xl font-semibold mb-2">Créer une organisation</h1>
             <p className="mb-6 text-sm text-muted-foreground">Créez votre organisation et le compte administrateur pour commencer.</p>
-            <RegisterForm />
+            {/* ✅ Envelopper RegisterForm dans Suspense */}
+            <Suspense fallback={<div className="text-sm text-muted-foreground">Chargement...</div>}>
+              <RegisterForm />
+            </Suspense>
           </div>
         </section>
       </div>
