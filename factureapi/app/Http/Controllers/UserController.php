@@ -2,114 +2,117 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-     // GET /api/users — membres de l'organisation connectée
-     public function index(Request $request): JsonResponse
-     {
-         $users = User::where('organization_id', $request->user()->organization_id)
-             ->with('invitedBy')
-             ->get();
+    // GET /api/users
+    public function index(Request $request): JsonResponse
+    {
+        $users = User::where('organization_id', $request->user()->organization_id)
+            ->with('invitedBy')
+            ->get();
 
-         return response()->json([
-             'success' => true,
-             'data'    => $users,
-         ]);
-     }
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
+    }
 
-    // POST /api/users/invite — inviter un membre
+    // POST /api/users/invite
     public function invite(Request $request): JsonResponse
     {
-        // ✅ Vérification limite utilisateurs
         if (!$request->user()->organization->canAddUser()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Limite d\'utilisateurs atteinte. Passez au plan supérieur.',
+                'message' => 'Limite d\'utilisateurs atteinte. Passez au plan superieur.',
             ], 403);
         }
 
         $validated = $request->validate([
             'fullname' => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'role'     => 'required|in:member,admin,superAdmin',
+            'email' => 'required|email|unique:users,email',
+            'role' => 'required|in:member,admin,superAdmin',
         ]);
 
         $plainPassword = str()->random(16);
 
         $user = User::create([
             ...$validated,
-            'password'        => Hash::make($plainPassword),
+            'password' => Hash::make($plainPassword),
             'organization_id' => $request->user()->organization_id,
-            'invited_by'      => $request->user()->id,
-            'status'          => 'inactif',
+            'invited_by' => $request->user()->id,
+            'status' => 'inactif',
         ]);
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Utilisateur créé',
-            'data'     => $user,
+            'success' => true,
+            'message' => 'Utilisateur cree',
+            'data' => $user,
             'password' => $plainPassword,
         ], 201);
     }
 
+    // GET /api/users/{id}
+    public function show(Request $request, User $user): JsonResponse
+    {
+        $this->ensureUserAccess($request, $user);
 
-     // GET /api/users/{id}
-     public function show(User $user): JsonResponse
-     {
-         $user->load(['organization', 'invitedBy', 'invoices']);
+        $user->load(['organization', 'invitedBy', 'invoices']);
 
-         return response()->json([
-             'success' => true,
-             'data'    => $user,
-         ]);
-     }
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+        ]);
+    }
 
-     // PUT /api/users/{id}
-     public function update(Request $request, User $user): JsonResponse
-     {
-         $validated = $request->validate([
-             'fullname' => 'sometimes|string|max:255',
-             'role'     => 'sometimes|in:member,admin,superAdmin',
-             'status'   => 'sometimes|in:actif,suspendu,inactif',
-         ]);
+    // PUT /api/users/{id}
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $this->ensureUserAccess($request, $user);
 
-         $user->update($validated);
+        $validated = $request->validate([
+            'fullname' => 'sometimes|string|max:255',
+            'role' => 'sometimes|in:member,admin,superAdmin',
+            'status' => 'sometimes|in:actif,suspendu,inactif',
+        ]);
 
-         return response()->json([
-             'success' => true,
-             'message' => 'Utilisateur mis à jour',
-             'data'    => $user,
-         ]);
-     }
+        $user->update($validated);
 
-     // DELETE /api/users/{id}
-     public function destroy(User $user): JsonResponse
-     {
-         $user->delete();
+        return response()->json([
+            'success' => true,
+            'message' => 'Utilisateur mis a jour',
+            'data' => $user,
+        ]);
+    }
 
-         return response()->json([
-             'success' => true,
-             'message' => 'Utilisateur supprimé',
-         ]);
-     }
+    // DELETE /api/users/{id}
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $this->ensureUserAccess($request, $user);
 
-     // POST /api/login
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Utilisateur supprime',
+        ]);
+    }
+
+    // POST /api/login
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        // Vérifier si l'utilisateur existe et le mot de passe est correct
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
@@ -117,7 +120,6 @@ class UserController extends Controller
             ], 401);
         }
 
-        // Vérifier si le compte est actif
         if ($user->status !== 'actif') {
             return response()->json([
                 'success' => false,
@@ -125,27 +127,25 @@ class UserController extends Controller
             ], 403);
         }
 
-        // Supprimer les anciens tokens et créer un nouveau
         $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'message' => 'Connexion réussie',
-            'token'   => $token,
-            'data'    => $user->load('organization'),
+            'message' => 'Connexion reussie',
+            'token' => $token,
+            'data' => $user->load('organization'),
         ]);
     }
 
     // POST /api/logout
     public function logout(Request $request): JsonResponse
     {
-        // Supprimer uniquement le token courant
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Déconnexion réussie',
+            'message' => 'Deconnexion reussie',
         ]);
     }
 
@@ -156,8 +156,19 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $user,
+            'data' => $user,
         ]);
     }
 
+    private function ensureUserAccess(Request $request, User $user): void
+    {
+        if ((int) $request->user()->organization_id === (int) $user->organization_id) {
+            return;
+        }
+
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => 'Vous ne pouvez pas acceder a cet utilisateur.',
+        ], 403));
+    }
 }

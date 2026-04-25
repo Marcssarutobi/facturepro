@@ -29,6 +29,7 @@ export default function RegisterForm() {
   const [step, setStep]         = useState<Step>('registration')
   const router                  = useRouter()
   const searchParams            = useSearchParams()
+  const [verifiedTransactionId, setVerifiedTransactionId] = useState<number | null>(null)
 
   const [formData, setFormData] = useState({
     name:    "",
@@ -78,6 +79,7 @@ export default function RegisterForm() {
 
     // Plan payant → passer à l'étape paiement
     setStep('payment')
+    setVerifiedTransactionId(null)
     // Pré-remplir le téléphone avec celui de l'organisation
     setPaymentData(prev => ({ ...prev, phone: formData.phone }))
   }
@@ -143,7 +145,8 @@ export default function RegisterForm() {
 
             if (verif.status === 200) {
               // ── Créer l'organisation après paiement validé ─────
-              await createOrganization()
+              setVerifiedTransactionId(response.transaction.id)
+              await createOrganization(response.transaction.id)
             }
 
           } catch (err: any) {
@@ -176,12 +179,17 @@ export default function RegisterForm() {
   }
 
   // ── Créer l'organisation (plan free) ─────────────────────────
-  async function createOrganization() {
+  async function createOrganization(transactionId?: number) {
     setLoading(true)
     try {
       const res = await axiosInstance.post("/organizations", {
         ...formData,
-        months: paymentData.months
+        ...(formData.plan === 'free'
+          ? {}
+          : {
+              months: paymentData.months,
+              transaction_id: transactionId ?? verifiedTransactionId,
+            }),
       })
       if (res.status === 201) {
         toast({
