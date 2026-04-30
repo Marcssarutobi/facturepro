@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+        {
+            "source": "/proxy/:path*",
+            "destination": "https://factuproapi.wuaze.com/proxy.php?path=:path*"
+        }
+    ]
+}
