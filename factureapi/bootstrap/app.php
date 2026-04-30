@@ -41,7 +41,25 @@ $app->singleton(
     App\Exceptions\Handler::class
 );
 
-$app->useStoragePath(sys_get_temp_dir());
+$storagePath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'factureapi-storage';
+
+foreach ([
+    $storagePath,
+    $storagePath.DIRECTORY_SEPARATOR.'app',
+    $storagePath.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+    $storagePath.DIRECTORY_SEPARATOR.'framework',
+    $storagePath.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'cache',
+    $storagePath.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'cache'.DIRECTORY_SEPARATOR.'data',
+    $storagePath.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'sessions',
+    $storagePath.DIRECTORY_SEPARATOR.'framework'.DIRECTORY_SEPARATOR.'views',
+    $storagePath.DIRECTORY_SEPARATOR.'logs',
+] as $directory) {
+    if (! is_dir($directory)) {
+        mkdir($directory, 0777, true);
+    }
+}
+
+$app->useStoragePath($storagePath);
 
 /*
 |--------------------------------------------------------------------------
