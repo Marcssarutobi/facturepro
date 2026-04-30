@@ -6,7 +6,6 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
     "Accept":       "application/json",
   },
-  withCredentials: true,
 })
 
 // Intercepteur requête : injecte le token à chaque appel

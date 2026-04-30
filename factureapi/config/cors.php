@@ -19,11 +19,15 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'https://facturepro-sogs.vercel.app',
-    ],
+    'allowed_origins' => array_values(array_filter([
+        env('FRONTEND_URL'),
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ])),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://facturepro(?:-[a-z0-9-]+)?\.vercel\.app$#',
+    ],
 
     'allowed_headers' => ['*'],
 
@@ -31,6 +35,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];
