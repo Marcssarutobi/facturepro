@@ -41,6 +41,8 @@ $app->singleton(
     App\Exceptions\Handler::class
 );
 
+$app->useStoragePath(sys_get_temp_dir());
+
 /*
 |--------------------------------------------------------------------------
 | Return The Application
