@@ -36,10 +36,12 @@ CMD ["sh", "-c", "\
     /tmp/factureapi-storage/framework/cache \
     /tmp/factureapi-storage/framework/views \
     /tmp/factureapi-storage/logs \
+    /tmp/factureapi-storage/app/temp/invoices \
     && chmod -R 777 /tmp/factureapi-storage \
     && ln -sfn /tmp/factureapi-storage storage \
     && php artisan config:clear \
     && php artisan config:cache \
     && php artisan migrate --force \
     && php artisan db:seed --force \
-    && nginx -g 'daemon off;' & php-fpm"]
+    && php-fpm -D \
+    && nginx -g 'daemon off;'"]
