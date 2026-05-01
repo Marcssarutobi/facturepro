@@ -106,7 +106,7 @@ export function RecentInvoices() {
                   {formatCurrency(invoice.amount)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getStatusColor(invoice.status)}>
+                  <Badge variant="secondary" className={getStatusColor(invoice.status)}>
                     {getStatusLabel(invoice.status)}
                   </Badge>
                 </TableCell>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/axiosInstance';
 import { toast } from "@/hooks/use-toast"
+import { clearStoredSession, getDefaultRouteForUser, parseStoredUser } from "@/lib/auth"
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -14,31 +15,24 @@ export default function LoginForm() {
   const [remember, setRemember] = useState(false);
   const router = useRouter();
 
-  // ✅ Vérifier si déjà connecté au chargement
   useEffect(() => {
-    const token   = localStorage.getItem('token')
-    const userRaw = localStorage.getItem('user')
+    const token = localStorage.getItem('token')
+    const user = parseStoredUser(localStorage.getItem('user'))
 
-    if (token && userRaw) {
-      const user = JSON.parse(userRaw)
-
-      // Vérifier le statut
+    if (token && user) {
       if (user.status === 'actif') {
-        router.replace('/dashboard')  // connecté et actif → dashboard
+        router.replace(getDefaultRouteForUser(user))
       } else {
-        // connecté mais suspendu/inactif → on nettoie et on reste sur login
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        clearStoredSession()
         setError('Votre compte est suspendu ou inactif. Contactez votre administrateur.')
         toast({
           variant: "destructive",
-          title: "Accès refusé",
+          title: "Acces refuse",
           description: "Votre compte est suspendu ou inactif. Contactez votre administrateur.",
         })
       }
     }
   }, [router])
-
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,18 +60,20 @@ export default function LoginForm() {
       }
 
       if (res.data.token) {
-        try { localStorage.setItem('token', res.data.token); localStorage.setItem('user', JSON.stringify(res.data.data)); } catch {}
+        try {
+          localStorage.setItem('token', res.data.token);
+          localStorage.setItem('user', JSON.stringify(res.data.data));
+        } catch {}
       }
 
       toast({
-        title: "Connexion réussie",
+        title: "Connexion reussie",
         description: `Bienvenue ${res.data.data.fullname}!`,
       })
 
-      // small delay to improve perceived responsiveness
-      setTimeout(() => router.push('/dashboard'), 200);
-    } catch (err) {
-      setError('Erreur réseau');
+      setTimeout(() => router.push(getDefaultRouteForUser(res.data.data)), 200);
+    } catch (_err) {
+      setError('Erreur reseau');
     } finally {
       setLoading(false);
     }
@@ -130,7 +126,7 @@ export default function LoginForm() {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4" />
           <span>Se souvenir de moi</span>
         </label>
-        <a href="#" className="text-primary underline">Mot de passe oublié?</a>
+        <a href="#" className="text-primary underline">Mot de passe oublie?</a>
       </div>
 
       <div>
@@ -144,7 +140,7 @@ export default function LoginForm() {
       </div>
 
       <div className="text-center text-sm text-muted-foreground">
-        Pas encore de compte? <a href="/register" className="text-primary underline">Créer une organisation</a>
+        Pas encore de compte? <a href="/register" className="text-primary underline">Creer une organisation</a>
       </div>
     </form>
   );

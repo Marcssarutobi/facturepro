@@ -49,4 +49,8 @@ class User extends Authenticatable
     public function invitedUsers(): HasMany { return $this->hasMany(User::class, 'invited_by'); }
     // A créé plusieurs factures
     public function invoices(): HasMany { return $this->hasMany(Invoice::class); }
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superAdmin';
+    }
 }

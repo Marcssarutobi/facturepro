@@ -8,6 +8,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PayementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SuperAdminDashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,5 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    Route::middleware('superadmin')->prefix('super-admin')->group(function () {
+        Route::get('/dashboard', [SuperAdminDashboardController::class, 'index']);
+    });
 
 });

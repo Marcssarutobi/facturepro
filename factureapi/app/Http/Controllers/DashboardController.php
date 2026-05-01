@@ -14,6 +14,14 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+
+        if ($user->isSuperAdmin() || !$user->organization) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisez le dashboard super administrateur pour ce compte.',
+            ], 403);
+        }
+
         $organization = $user->organization;
 
         // Statistiques générales

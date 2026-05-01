@@ -36,7 +36,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'fullname' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|in:member,admin,superAdmin',
+            'role' => 'required|in:member,admin',
         ]);
 
         $plainPassword = str()->random(16);
@@ -77,7 +77,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'fullname' => 'sometimes|string|max:255',
-            'role' => 'sometimes|in:member,admin,superAdmin',
+            'role' => 'sometimes|in:member,admin',
             'status' => 'sometimes|in:actif,suspendu,inactif',
         ]);
 

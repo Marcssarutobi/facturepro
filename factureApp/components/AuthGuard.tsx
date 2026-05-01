@@ -2,22 +2,52 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { clearStoredSession, getDefaultRouteForUser, getStoredUser } from "@/lib/auth"
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+type AuthGuardProps = {
+  children: React.ReactNode
+  requireSuperAdmin?: boolean
+  forbidSuperAdmin?: boolean
+}
+
+export default function AuthGuard({
+  children,
+  requireSuperAdmin = false,
+  forbidSuperAdmin = false,
+}: AuthGuardProps) {
   const router = useRouter()
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
+    const user = getStoredUser()
 
-    if (!token) {
+    if (!token || !user) {
+      clearStoredSession()
       router.replace("/login")
-    } else {
-      setChecked(true)
+      return
     }
-  }, [router])
 
-  if (!checked) return null // ou un spinner
+    if (user.status && user.status !== "actif") {
+      clearStoredSession()
+      router.replace("/login")
+      return
+    }
+
+    if (requireSuperAdmin && user.role !== "superAdmin") {
+      router.replace(getDefaultRouteForUser(user))
+      return
+    }
+
+    if (forbidSuperAdmin && user.role === "superAdmin") {
+      router.replace("/super-admin")
+      return
+    }
+
+    setChecked(true)
+  }, [forbidSuperAdmin, requireSuperAdmin, router])
+
+  if (!checked) return null
 
   return <>{children}</>
 }
