@@ -41,5 +41,5 @@ CMD ["sh", "-c", "\
     && php artisan config:clear \
     && php artisan config:cache \
     && php artisan migrate --force \
-    && php artisan db:seed \
+    && php artisan db:seed --force \
     && nginx -g 'daemon off;' & php-fpm"]
