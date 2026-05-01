@@ -23,6 +23,7 @@ return [
         env('FRONTEND_URL'),
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'https://facturepro-sogs.vercel.app',
     ])),
 
     'allowed_origins_patterns' => [
