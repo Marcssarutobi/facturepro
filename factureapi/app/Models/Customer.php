@@ -11,7 +11,7 @@ class Customer extends Model
 {
     use HasFactory;
 
-    protected $fillable = [ 'fullname', 'email', 'phone', 'adresse', 'organization_id' ];
+    protected $fillable = [ 'fullname', 'email', 'phone', 'adresse', 'ifu', 'organization_id' ];
 
     // Appartient à une organisation
     public function organization(): BelongsTo { return $this->belongsTo(Organization::class); }

@@ -26,6 +26,7 @@ type Customer = {
   email:           string | null
   phone:           string | null
   adresse:         string | null
+  ifu:             string | null
   invoices_count:         number
   organization_id: number
   created_at:      string
@@ -48,6 +49,7 @@ export default function CustomersPage() {
     email: '',
     phone: '',
     adresse: '',
+    ifu: '',
   })
 
   const openNewDialog = ()=>{
@@ -58,6 +60,7 @@ export default function CustomersPage() {
       email: '',
       phone: '',
       adresse: '',
+      ifu: '',
     })
   }
 
@@ -68,6 +71,7 @@ export default function CustomersPage() {
       email: customer.email || '',
       phone: customer.phone || '',
       adresse: customer.adresse || '',
+      ifu: customer.ifu || '',
     })
     setIsDialogOpen(true)
   }
@@ -109,6 +113,7 @@ export default function CustomersPage() {
           email: '',
           phone: '',
           adresse: '',
+          ifu: '',
         })
         handleAllCustomer()
         toast({
@@ -146,6 +151,7 @@ export default function CustomersPage() {
           email: '',
           phone: '',
           adresse: '',
+          ifu: '',
         })
         await handleAllCustomer()
         toast({
@@ -262,6 +268,10 @@ export default function CustomersPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="address">Adresse</Label>
                     <Input id="address" value={formData.adresse} onChange={(e) => setFormData({ ...formData, adresse: e.target.value })} placeholder="Ville, Pays" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="ifu">IFU</Label>
+                    <Input id="ifu" value={formData.ifu} onChange={(e) => setFormData({ ...formData, ifu: e.target.value })} placeholder="Numéro IFU" />
                   </div>
                 </div>
                 <DialogFooter>

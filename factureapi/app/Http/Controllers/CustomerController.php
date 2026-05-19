@@ -32,6 +32,7 @@ class CustomerController extends Controller
             'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
+            'ifu' => 'nullable|string|max:255',
         ]);
 
         $customer = Customer::create([
@@ -69,6 +70,7 @@ class CustomerController extends Controller
             'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string',
+            'ifu' => 'nullable|string|max:255',
         ]);
 
         $customer->update($validated);
