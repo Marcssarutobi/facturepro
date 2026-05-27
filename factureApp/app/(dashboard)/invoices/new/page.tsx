@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Save, Send, ArrowLeft, Loader2 } from "lucide-react"
+import { Plus, Trash2, Save, ArrowLeft, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
 
@@ -75,19 +75,16 @@ const formatCurrency = (amount: number) =>
 
 const toDateInputValue = (value: string) => value.split("T")[0]
 
-const toUnitPriceTTC = (unitPriceHT: number, vatRate: number) =>
-  vatRate > 0 ? Math.round(unitPriceHT * (1 + vatRate)) : Math.round(unitPriceHT)
+const roundAmount = (amount: number) => Number(amount.toFixed(2))
 
-const getLineTotalTTC = (line: Pick<InvoiceItem, "quantity" | "unit_price">) =>
-  Math.round(line.quantity * line.unit_price)
+const getLineTotalHT = (line: Pick<InvoiceItem, "quantity" | "unit_price">) =>
+  roundAmount(line.quantity * line.unit_price)
 
-const getLineTotalHT = (line: Pick<InvoiceItem, "quantity" | "unit_price" | "vat_rate">) => {
-  const lineTTC = getLineTotalTTC(line)
+const getLineTotalTVA = (line: Pick<InvoiceItem, "quantity" | "unit_price" | "vat_rate">) =>
+  roundAmount(getLineTotalHT(line) * line.vat_rate)
 
-  return line.vat_rate > 0
-    ? Math.round(lineTTC / (1 + line.vat_rate))
-    : lineTTC
-}
+const getLineTotalTTC = (line: Pick<InvoiceItem, "quantity" | "unit_price" | "vat_rate">) =>
+  roundAmount(getLineTotalHT(line) + getLineTotalTVA(line))
 
 export default function NewInvoicePage() {
   const router = useRouter()
@@ -157,7 +154,7 @@ export default function NewInvoicePage() {
                   id: String(item.id),
                   description: item.description,
                   quantity: item.quantity,
-                  unit_price: toUnitPriceTTC(Number(item.unit_price), Number(item.vat_rate)),
+                  unit_price: Number(item.unit_price),
                   vat_rate: Number(item.vat_rate),
                 }))
               : [{ ...defaultLine, id: "1" }]
@@ -203,9 +200,9 @@ export default function NewInvoicePage() {
     let totalTTC = 0
 
     lines.forEach((line) => {
-      const lineTTC = getLineTotalTTC(line)
       const lineHT = getLineTotalHT(line)
-      const lineTVA = lineTTC - lineHT
+      const lineTVA = getLineTotalTVA(line)
+      const lineTTC = getLineTotalTTC(line)
 
       totalHT += lineHT
       totalTVA += lineTVA
@@ -213,9 +210,9 @@ export default function NewInvoicePage() {
     })
 
     return {
-      totalHT: Math.round(totalHT),
-      totalTVA: Math.round(totalTVA),
-      totalTTC: Math.round(totalTTC),
+      totalHT: roundAmount(totalHT),
+      totalTVA: roundAmount(totalTVA),
+      totalTTC: roundAmount(totalTTC),
     }
   }, [lines])
 
@@ -240,17 +237,10 @@ export default function NewInvoicePage() {
         due_at: issueDate,
         echeance_at: dueDate,
         total_tva: totals.totalTVA,
-        items: lines.map(({ id, ...item }) => {
-          const lineTTC = getLineTotalTTC(item)
-          const lineHT = item.vat_rate > 0
-            ? Math.round(lineTTC / (1 + item.vat_rate))
-            : lineTTC
-
-          return {
-            ...item,
-            unit_price: Number((lineHT / item.quantity).toFixed(2)),
-          }
-        }),
+        items: lines.map(({ id, ...item }) => ({
+          ...item,
+          unit_price: roundAmount(item.unit_price),
+        })),
       }
 
       const res = isEditMode
@@ -372,13 +362,17 @@ export default function NewInvoicePage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Saisissez les montants en HT. La TVA et le total TTC sont calcules
+                    automatiquement pour l&apos;enregistrement et la normalisation e-MCF.
+                  </p>
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[40%]">Description</TableHead>
                           <TableHead>Qté</TableHead>
-                          <TableHead>Prix unitaire TTC</TableHead>
+                          <TableHead>Prix unitaire HT</TableHead>
                           <TableHead>TVA %</TableHead>
                           <TableHead className="text-right">Total TTC</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
@@ -412,6 +406,7 @@ export default function NewInvoicePage() {
                               <Input
                                 type="number"
                                 min="0"
+                                step="0.01"
                                 value={line.unit_price}
                                 onChange={(event) =>
                                   updateLine(line.id, "unit_price", parseFloat(event.target.value) || 0)

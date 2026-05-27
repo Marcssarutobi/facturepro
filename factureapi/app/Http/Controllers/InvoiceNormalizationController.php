@@ -80,12 +80,24 @@ class InvoiceNormalizationController extends Controller
 
         // ───────── 1. CHECK API ─────────
         try {
-            $statusRes = Http::withHeaders($headers)->timeout(10)->get($apiUrl);
+            $statusRes = Http::withHeaders($headers)->withoutVerifying()->timeout(10)->get($apiUrl);
+
+            Log::info('e-MCF CHECK', [
+                'url'      => $apiUrl,
+                'token'    => $org->emcef_token,
+                'http'     => $statusRes->status(),
+                'response' => $statusRes->json(),
+            ]);
 
             if (!$statusRes->successful() || !$statusRes->json('status')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'API e-MCF indisponible.',
+                    'debug'   => [
+                        'url'      => $apiUrl,
+                        'http'     => $statusRes->status(),
+                        'response' => $statusRes->json(),
+                    ],
                 ], 503);
             }
         } catch (\Throwable $e) {
@@ -94,6 +106,7 @@ class InvoiceNormalizationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Impossible de contacter e-MCF.',
+                'debug'   => $e->getMessage(),
             ], 503);
         }
 
@@ -163,6 +176,7 @@ class InvoiceNormalizationController extends Controller
         // ───────── 4. ENVOI ─────────
         try {
             $res = Http::withHeaders($headers)
+                ->withoutVerifying() 
                 ->timeout(30)
                 ->post($apiUrl, $payload);
 
@@ -196,6 +210,7 @@ class InvoiceNormalizationController extends Controller
         // ───────── 5. CONFIRMATION ─────────
         try {
             $confirmRes = Http::withHeaders($headers)
+                ->withoutVerifying()
                 ->timeout(30)
                 ->put("{$apiUrl}/{$uid}/confirm");
 
