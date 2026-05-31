@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('password');
             $table->foreignId('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
             $table->enum('role',['member','admin','superAdmin']);
+            $table->string('reset_code')->nullable();
             $table->foreignId('invited_by')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('status', ['actif','suspendu','inactif'])->default('actif');
             $table->rememberToken();

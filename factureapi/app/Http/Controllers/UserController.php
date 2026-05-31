@@ -7,6 +7,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -156,6 +157,42 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $user,
+        ]);
+    }
+
+    public function profile(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $request->user()->load(['organization', 'invitedBy']),
+        ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'fullname' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $updateData = [
+            'fullname' => $validated['fullname'],
+            'email' => $validated['email'],
+        ];
+
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil mis à jour avec succès.',
             'data' => $user,
         ]);
     }

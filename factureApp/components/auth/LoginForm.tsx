@@ -126,7 +126,7 @@ export default function LoginForm() {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4" />
           <span>Se souvenir de moi</span>
         </label>
-        <a href="#" className="text-primary underline">Mot de passe oublie?</a>
+        <a href="/forgot-password" className="text-primary underline">Mot de passe oublie?</a>
       </div>
 
       <div>

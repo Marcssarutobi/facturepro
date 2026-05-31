@@ -4,6 +4,7 @@ use App\Http\Controllers\InvoiceNormalizationController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PayementController;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\Route;
 
 // Routes publiques (pas besoin d'être connecté)
 Route::post('/login', [UserController::class, 'login']);
+Route::post('/password/forgot', [PasswordResetController::class, 'forgot']);
+Route::post('/password/reset', [PasswordResetController::class, 'reset']);
 Route::post('/organizations',         [OrganizationController::class, 'store']);
 Route::post('/verifier-paiement',[PayementController::class, 'verifier']);
 
@@ -46,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::put('users/{user}', [UserController::class, 'update']);
     Route::delete('users/{user}', [UserController::class, 'destroy']);
+    Route::get('profile', [UserController::class, 'profile']);
+    Route::put('profile', [UserController::class, 'updateProfile']);
 
     // Customers
     Route::apiResource('customers', CustomerController::class);
