@@ -63,6 +63,7 @@ type Customer = {
   id: number
   fullname: string
   email: string | null
+  ifu: string
 }
 
 type Invoice = {
@@ -653,6 +654,9 @@ export default function InvoicesPage() {
                         {selectedInvoice.customer?.fullname ?? selectedInvoice.anonymous_customer_name}
                       </p>
                       <p>{selectedInvoice.customer?.email ?? "Email non renseigné"}</p>
+                      {selectedInvoice.customer?.ifu && (
+                        <p>IFU : {selectedInvoice.customer.ifu}</p>
+                      )}
                     </div>
                   </div>
 

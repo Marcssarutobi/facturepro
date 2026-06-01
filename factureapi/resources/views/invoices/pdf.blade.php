@@ -309,6 +309,9 @@
                         <p class="section-title">{{ $invoice->customer->fullname ?? $invoice->anonymous_customer_name }}</p>
                         <div class="muted">
                             <div>{{ $invoice->customer->email ?? 'Email non renseigne' }}</div>
+                            @if($invoice->customer->ifu ?? null)
+                                <div>IFU : {{ $invoice->customer->ifu }}</div>
+                            @endif
                             @if($invoice->customer->phone ?? null)
                                 <div>{{ $invoice->customer->phone }}</div>
                             @endif

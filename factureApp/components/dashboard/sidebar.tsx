@@ -10,6 +10,7 @@ import {
   Users,
   Building2,
   UserCog,
+  UserPen,
   LogOut,
 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -20,7 +21,7 @@ const navigation = [
   { name: "Clients", href: "/customers", icon: Users },
   { name: "Organisation", href: "/organization", icon: Building2 },
   { name: "Membres", href: "/members", icon: UserCog },
-  { name: "Profil", href: "/profile", icon: UserCog },
+  { name: "Profil", href: "/profile", icon: UserPen },
 ]
 
 type User = {
