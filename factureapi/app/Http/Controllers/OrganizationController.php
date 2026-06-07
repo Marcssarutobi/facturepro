@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationController extends Controller
 {
@@ -86,6 +88,19 @@ class OrganizationController extends Controller
                 'status' => 'actif',
                 'invited_by' => null,
             ]);
+
+            try {
+                Mail::send('emails.admin_welcome', [
+                    'user' => $user,
+                    'organization' => $organization,
+                    'password' => $plainPassword,
+                ], function ($mail) use ($user) {
+                    $mail->to($user->email, $user->fullname)
+                        ->subject('Bienvenue sur FacturePro');
+                });
+            } catch (\Throwable $e) {
+                Log::error('Erreur lors de l\'envoi de l\'e-mail de bienvenue: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
