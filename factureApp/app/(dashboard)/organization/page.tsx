@@ -765,7 +765,7 @@ export default function OrganizationPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pro">Pro - 5 000 FCFA / mois</SelectItem>
-                    <SelectItem value="business">Business - 12 000 FCFA / mois</SelectItem>
+                    {/* <SelectItem value="business">Business - 12 000 FCFA / mois</SelectItem> */}
                   </SelectContent>
                 </Select>
               </div>

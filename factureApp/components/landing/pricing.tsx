@@ -34,23 +34,23 @@ const plans = [
     cta: "Essayer Pro",
     popular: true,
   },
-  {
-    name: "Business",
-    plan:'business',
-    price: "12000",
-    description: "Pour les équipes",
-    features: [
-      "Factures illimitées",
-      "Utilisateurs illimités",
-      "Support prioritaire",
-      "Envoi de factures par email",
-      "API access",
-      "Personnalisation avancée",
-      "Rapports détaillés",
-    ],
-    cta: "Contacter les ventes",
-    popular: false,
-  },
+  // {
+  //   name: "Business",
+  //   plan:'business',
+  //   price: "12000",
+  //   description: "Pour les équipes",
+  //   features: [
+  //     "Factures illimitées",
+  //     "Utilisateurs illimités",
+  //     "Support prioritaire",
+  //     "Envoi de factures par email",
+  //     "API access",
+  //     "Personnalisation avancée",
+  //     "Rapports détaillés",
+  //   ],
+  //   cta: "Contacter les ventes",
+  //   popular: false,
+  // },
 ]
 
 export function Pricing() {
