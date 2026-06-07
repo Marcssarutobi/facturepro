@@ -34,23 +34,23 @@ const plans = [
     cta: "Essayer Pro",
     popular: true,
   },
-  // {
-  //   name: "Business",
-  //   plan:'business',
-  //   price: "12000",
-  //   description: "Pour les équipes",
-  //   features: [
-  //     "Factures illimitées",
-  //     "Utilisateurs illimités",
-  //     "Support prioritaire",
-  //     "Envoi de factures par email",
-  //     "API access",
-  //     "Personnalisation avancée",
-  //     "Rapports détaillés",
-  //   ],
-  //   cta: "Contacter les ventes",
-  //   popular: false,
-  // },
+  {
+    name: "Business",
+    plan:'business',
+    price: "12000",
+    description: "Pour les équipes",
+    features: [
+      "Factures illimitées",
+      "Utilisateurs illimités",
+      "Support prioritaire",
+      "Envoi de factures par email",
+      "API access",
+      "Personnalisation avancée",
+      "Rapports détaillés",
+    ],
+    cta: "Contacter les ventes",
+    popular: false,
+  },
 ]
 
 export function Pricing() {
@@ -102,13 +102,23 @@ export function Pricing() {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? "default" : "outline"}
-                  asChild
-                >
-                  <Link href={`/register?plan=${plan.plan}&price=${plan.price}`}>{plan.cta}</Link>
-                </Button>
+                {plan.plan === 'business' ? (
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? "default" : "outline"}
+                    disabled
+                  >
+                    {plan.cta}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? "default" : "outline"}
+                    asChild
+                  >
+                    <Link href={`/register?plan=${plan.plan}&price=${plan.price}`}>{plan.cta}</Link>
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}
