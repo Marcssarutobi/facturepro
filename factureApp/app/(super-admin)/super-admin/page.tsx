@@ -114,6 +114,13 @@ const PLAN_COLORS: Record<Plan, string> = {
   business: "bg-indigo-500",
 }
 
+const toNumber = (value: unknown) => {
+  const number = Number(value ?? 0)
+  return Number.isFinite(number) ? number : 0
+}
+
+const toCount = (value: unknown) => toNumber(value).toString()
+
 function MoneyTooltip({
   active,
   payload,
@@ -173,64 +180,64 @@ export default function SuperAdminPage() {
   }, [])
 
   const summary = dashboard?.summary
-  const monthlyActivity = dashboard?.charts.monthly_activity ?? []
-  const subscriptionPayments = dashboard?.charts.subscription_payments ?? []
-  const planDistribution = dashboard?.charts.plan_distribution ?? []
+  const monthlyActivity = dashboard?.charts?.monthly_activity ?? []
+  const subscriptionPayments = dashboard?.charts?.subscription_payments ?? []
+  const planDistribution = dashboard?.charts?.plan_distribution ?? []
   const latestSubscriptions = (dashboard?.latest_subscriptions ?? []).filter(
     (subscription) => subscription.plan !== "business"
   )
   const visiblePlanDistribution = planDistribution.filter((item) => item.plan !== "business")
-  const paidAccounts = summary?.pro_accounts ?? 0
-  const totalOrganizations = summary?.total_organizations ?? 0
+  const paidAccounts = toNumber(summary?.pro_accounts)
+  const totalOrganizations = toNumber(summary?.total_organizations)
 
   const planRows = visiblePlanDistribution.length
     ? visiblePlanDistribution
     : ([
-        { plan: "free", count: summary?.free_accounts ?? 0 },
-        { plan: "pro", count: summary?.pro_accounts ?? 0 },
+        { plan: "free", count: toNumber(summary?.free_accounts) },
+        { plan: "pro", count: toNumber(summary?.pro_accounts) },
       ] satisfies PlanDistributionPoint[])
 
   const summaryCards = summary
     ? [
         {
           title: "Organisations inscrites",
-          value: summary.total_organizations.toString(),
-          detail: `${summary.organizations_this_month} nouvelles ce mois`,
+          value: toCount(summary.total_organizations),
+          detail: `${toCount(summary.organizations_this_month)} nouvelles ce mois`,
           icon: Building2,
           accent: "bg-indigo-50 text-indigo-700",
         },
         {
           title: "Factures creees ce mois",
-          value: summary.invoices_this_month.toString(),
-          detail: `${summary.total_invoices} factures au total`,
+          value: toCount(summary.invoices_this_month),
+          detail: `${toCount(summary.total_invoices)} factures au total`,
           icon: FileText,
           accent: "bg-cyan-50 text-cyan-700",
         },
         {
           title: "Comptes Free",
-          value: summary.free_accounts.toString(),
+          value: toCount(summary.free_accounts),
           detail: "Organisations en plan gratuit",
           icon: Users,
           accent: "bg-zinc-100 text-zinc-700",
         },
         {
           title: "Comptes Pro",
-          value: summary.pro_accounts.toString(),
+          value: toCount(summary.pro_accounts),
           detail: "Organisations en plan payant disponible",
           icon: TrendingUp,
           accent: "bg-emerald-50 text-emerald-700",
         },
         {
           title: "Paiements ce mois",
-          value: formatCurrency(summary.subscription_revenue_this_month),
-          detail: `${summary.subscription_payments_this_month} paiements recus`,
+          value: formatCurrency(toNumber(summary.subscription_revenue_this_month)),
+          detail: `${toCount(summary.subscription_payments_this_month)} paiements recus`,
           icon: CreditCard,
           accent: "bg-amber-50 text-amber-700",
         },
         {
           title: "MRR estime",
-          value: formatCurrency(summary.estimated_mrr),
-          detail: `${formatCurrency(summary.subscription_revenue)} encaisses au total`,
+          value: formatCurrency(toNumber(summary.estimated_mrr)),
+          detail: `${formatCurrency(toNumber(summary.subscription_revenue))} encaisses au total`,
           icon: WalletCards,
           accent: "bg-rose-50 text-rose-700",
         },
@@ -348,11 +355,11 @@ export default function SuperAdminPage() {
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2">
                       <span className="text-sm font-medium text-indigo-800">Factures ce mois</span>
-                      <span className="text-sm font-semibold text-indigo-900">{summary.invoices_this_month}</span>
+                      <span className="text-sm font-semibold text-indigo-900">{toCount(summary.invoices_this_month)}</span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-cyan-50 px-3 py-2">
                       <span className="text-sm font-medium text-cyan-800">Total historique</span>
-                      <span className="text-sm font-semibold text-cyan-900">{summary.total_invoices}</span>
+                      <span className="text-sm font-semibold text-cyan-900">{toCount(summary.total_invoices)}</span>
                     </div>
                   </div>
                 </CardContent>
