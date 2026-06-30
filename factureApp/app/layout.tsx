@@ -2,18 +2,47 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
-import Script from "next/script"
+import Script from 'next/script'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter"
-});
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://facturapro.com'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
-  title: 'FacturaPro - Facturation simplifiée pour freelances',
-  description: 'Créez vos factures en moins de 60 secondes. Solution de facturation professionnelle pour freelances et petites entreprises.',
-  generator: 'v0.app',
+  metadataBase: new URL(siteUrl),
+  applicationName: 'FacturaPro',
+  title: {
+    default: 'FacturaPro - Logiciel de facturation en ligne',
+    template: '%s | FacturaPro',
+  },
+  description:
+    'Logiciel SaaS pour créer, suivre et télécharger des factures professionnelles et des factures de vente normalisées.',
+  keywords: [
+    'logiciel de facturation',
+    'facture en ligne',
+    'facture de vente normalisée',
+    'générateur de facture PDF',
+    'gestion de factures',
+    'FacturaPro',
+  ],
+  authors: [{ name: 'FacturaPro' }],
+  creator: 'FacturaPro',
+  publisher: 'FacturaPro',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   icons: {
     icon: [
       {
@@ -39,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
         <Toaster />

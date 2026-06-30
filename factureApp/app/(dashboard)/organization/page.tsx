@@ -41,7 +41,7 @@ import { Switch } from "@/components/ui/switch"
 import { getApiErrorMessage } from "@/lib/utils"
 
 type PlanKey = "free" | "pro" | "business"
-type PaidPlanKey = "pro" | "business"
+type PaidPlanKey = "pro"
 type MonthValue = 1 | 3 | 6 | 9 | 12
 type PlanProcessingStep = "" | "verification" | "activation"
 
@@ -136,10 +136,10 @@ const PLAN_INFO: Record<
     features: "Factures illimitees - 5 utilisateurs - Relances auto",
   },
   business: {
-    label: "Business",
-    price: "12 000 FCFA/mois",
-    unitPrice: 12000,
-    features: "Factures illimitees - Utilisateurs illimites - Support prioritaire",
+    label: "Plan indisponible",
+    price: "Non disponible",
+    unitPrice: 0,
+    features: "Ce plan n'est pas disponible pour le moment",
   },
 }
 
@@ -311,7 +311,7 @@ export default function OrganizationPage() {
       firstname,
       lastname,
       phone: formData.phone || prev.phone,
-      plan: formData.plan === "business" ? "business" : "pro",
+      plan: "pro",
     }))
     setPlanModalOpen(true)
   }
@@ -635,7 +635,7 @@ export default function OrganizationPage() {
       firstname: parts[0] ?? prev.firstname,
       lastname: parts.slice(1).join(" ") || prev.lastname,
       phone: org.phone ?? prev.phone,
-      plan: org.plan === "business" ? "business" : "pro",
+      plan: "pro",
     }))
 
     // Fetch fresh organization data

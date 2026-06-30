@@ -3,17 +3,19 @@ import Link from "next/link"
 const footerLinks = {
   produit: [
     { name: "Fonctionnalités", href: "#fonctionnalites" },
+    { name: "Aperçu", href: "#demo" },
     { name: "Tarifs", href: "#tarifs" },
-    { name: "Démo", href: "#demo" },
+    { name: "FAQ", href: "#faq" },
   ],
-  legal: [
-    { name: "Mentions légales", href: "#" },
-    { name: "CGV", href: "#" },
-    { name: "Politique de confidentialité", href: "#" },
+  entreprise: [
+    { name: "À propos", href: "#apropos" },
+    { name: "Support", href: "#support" },
+    { name: "Politique de confidentialité", href: "#confidentialite" },
   ],
   contact: [
-    { name: "Support", href: "#" },
     { name: "contact@facturapro.com", href: "mailto:contact@facturapro.com" },
+    { name: "Se connecter", href: "/login" },
+    { name: "Créer un compte", href: "/register" },
   ],
 }
 
@@ -22,17 +24,15 @@ export function Footer() {
     <footer className="border-t bg-background">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-4">
-          {/* Brand */}
           <div className="md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
               <img src="/logoFacture.png" alt="Logo FacturaPro" width="150" />
             </Link>
-            <p className="mt-4 text-sm text-muted-foreground">
-              La solution de facturation simple et efficace pour les professionnels indépendants.
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              La solution SaaS pour créer, suivre et télécharger vos factures professionnelles.
             </p>
           </div>
 
-          {/* Produit */}
           <div>
             <h3 className="font-semibold text-foreground">Produit</h3>
             <ul className="mt-4 space-y-3">
@@ -49,11 +49,10 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Légal */}
           <div>
-            <h3 className="font-semibold text-foreground">Légal</h3>
+            <h3 className="font-semibold text-foreground">Entreprise</h3>
             <ul className="mt-4 space-y-3">
-              {footerLinks.legal.map((link) => (
+              {footerLinks.entreprise.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
@@ -66,7 +65,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
           <div>
             <h3 className="font-semibold text-foreground">Contact</h3>
             <ul className="mt-4 space-y-3">
@@ -84,7 +82,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Copyright */}
         <div className="mt-12 border-t pt-8">
           <p className="text-center text-sm text-muted-foreground">
             © {new Date().getFullYear()} FacturaPro. Tous droits réservés.

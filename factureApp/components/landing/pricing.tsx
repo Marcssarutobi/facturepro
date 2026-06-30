@@ -7,49 +7,33 @@ import { Check } from "lucide-react"
 const plans = [
   {
     name: "Free",
-    plan:'free',
+    plan: "free",
     price: "0",
-    description: "Pour commencer en douceur",
+    description: "Pour tester la gestion de factures sans engagement",
     features: [
       "3 factures par mois",
       "1 utilisateur",
       "Gestion clients basique",
-      "Export PDF",
+      "Aperçu et export PDF normalisé",
     ],
     cta: "Commencer gratuitement",
     popular: false,
   },
   {
     name: "Pro",
-    plan:'pro',
+    plan: "pro",
     price: "5000",
-    description: "Pour les freelances actifs",
+    description: "Pour les freelances et petites entreprises actives",
     features: [
       "Factures illimitées",
       "5 utilisateurs",
-      "Relances automatiques",
-      "Tableau de bord complet",
-      "Envoi de factures par email",
+      "Factures de vente normalisées",
+      "Clients et statuts de paiement",
+      "PDF professionnel téléchargeable",
+      "Support prioritaire",
     ],
     cta: "Essayer Pro",
     popular: true,
-  },
-  {
-    name: "Business",
-    plan:'business',
-    price: "12000",
-    description: "Pour les équipes",
-    features: [
-      "Factures illimitées",
-      "Utilisateurs illimités",
-      "Support prioritaire",
-      "Envoi de factures par email",
-      "API access",
-      "Personnalisation avancée",
-      "Rapports détaillés",
-    ],
-    cta: "Contacter les ventes",
-    popular: false,
   },
 ]
 
@@ -57,18 +41,16 @@ export function Pricing() {
   return (
     <section id="tarifs" className="bg-muted/50 py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Des tarifs simples et transparents
+            Des tarifs simples pour démarrer vite
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Choisissez le plan adapté à votre activité. Changez à tout moment.
+            Choisissez le plan adapté à votre activité. Vous pouvez évoluer quand votre volume de factures augmente.
           </p>
         </div>
 
-        {/* Pricing Cards */}
-        <div className="mt-12 grid gap-8 sm:mt-16 lg:grid-cols-3">
+        <div className="mt-12 grid gap-8 sm:mt-16 lg:grid-cols-2">
           {plans.map((plan) => (
             <Card
               key={plan.name}
@@ -87,7 +69,7 @@ export function Pricing() {
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{plan.price} fcfa</span>
+                  <span className="text-4xl font-bold text-foreground">{plan.price} FCFA</span>
                   <span className="text-muted-foreground">/mois</span>
                 </div>
               </CardHeader>
@@ -102,23 +84,13 @@ export function Pricing() {
                 </ul>
               </CardContent>
               <CardFooter>
-                {plan.plan === 'business' ? (
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                    disabled
-                  >
-                    {plan.cta}
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                    asChild
-                  >
-                    <Link href={`/register?plan=${plan.plan}&price=${plan.price}`}>{plan.cta}</Link>
-                  </Button>
-                )}
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? "default" : "outline"}
+                  asChild
+                >
+                  <Link href={`/register?plan=${plan.plan}&price=${plan.price}`}>{plan.cta}</Link>
+                </Button>
               </CardFooter>
             </Card>
           ))}

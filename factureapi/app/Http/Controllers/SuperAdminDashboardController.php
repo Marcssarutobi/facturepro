@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Organization;
+use App\Models\Payement;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +41,9 @@ class SuperAdminDashboardController extends Controller
             ->whereDate('due_at', '<', $today)
             ->count();
         $invoicesThisMonth = Invoice::whereBetween('created_at', [$startOfMonth, $now])->count();
+        $freeAccounts = Organization::where('plan', 'free')->count();
+        $proAccounts = Organization::where('plan', 'pro')->count();
+        $businessAccounts = Organization::where('plan', 'business')->count();
 
         $collectedRevenue = (float) Invoice::where('status', 'paid')->sum('total_ttc');
         $monthlyRevenue = (float) Invoice::where('status', 'paid')
@@ -58,7 +62,13 @@ class SuperAdminDashboardController extends Controller
             ->get(['plan'])
             ->sum(fn (Organization $organization) => Organization::PLAN_PRICES[$organization->plan] ?? 0);
 
+        $subscriptionRevenue = (float) Payement::sum('amount');
+        $subscriptionRevenueThisMonth = (float) Payement::whereBetween('created_at', [$startOfMonth, $now])
+            ->sum('amount');
+        $subscriptionPaymentsThisMonth = Payement::whereBetween('created_at', [$startOfMonth, $now])->count();
+
         $monthlyActivity = [];
+        $subscriptionPayments = [];
         for ($i = 5; $i >= 0; $i--) {
             $date = $now->copy()->subMonths($i);
 
@@ -77,6 +87,24 @@ class SuperAdminDashboardController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->sum('total_ttc'),
+            ];
+
+            $subscriptionPayments[] = [
+                'month' => $date->locale('fr')->translatedFormat('M Y'),
+                'amount' => (float) Payement::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->sum('amount'),
+                'payments' => Payement::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count(),
+                'pro_payments' => Payement::where('plan', 'pro')
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count(),
+                'business_payments' => Payement::where('plan', 'business')
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->count(),
             ];
         }
 
@@ -161,6 +189,26 @@ class SuperAdminDashboardController extends Controller
             })
             ->values();
 
+        $latestSubscriptions = Payement::query()
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(function (Payement $payement) {
+                return [
+                    'id' => $payement->id,
+                    'customer_name' => trim($payement->firstname . ' ' . $payement->lastname),
+                    'phone' => $payement->phone,
+                    'amount' => (float) $payement->amount,
+                    'months' => (int) $payement->months,
+                    'plan' => $payement->plan,
+                    'org_name' => $payement->org_name,
+                    'org_email' => $payement->org_email,
+                    'org_phone' => $payement->org_phone,
+                    'created_at' => $payement->created_at?->toDateString(),
+                ];
+            })
+            ->values();
+
         $recentUsers = User::query()
             ->with('organization:id,name')
             ->latest()
@@ -215,18 +263,26 @@ class SuperAdminDashboardController extends Controller
                 'paid_invoices' => $paidInvoices,
                 'overdue_invoices' => $overdueInvoices,
                 'invoices_this_month' => $invoicesThisMonth,
+                'free_accounts' => $freeAccounts,
+                'pro_accounts' => $proAccounts,
+                'business_accounts' => $businessAccounts,
                 'estimated_mrr' => $estimatedMrr,
                 'collected_revenue' => $collectedRevenue,
                 'monthly_revenue' => $monthlyRevenue,
+                'subscription_revenue' => $subscriptionRevenue,
+                'subscription_revenue_this_month' => $subscriptionRevenueThisMonth,
+                'subscription_payments_this_month' => $subscriptionPaymentsThisMonth,
                 'overdue_amount' => $overdueAmount,
             ],
             'charts' => [
                 'monthly_activity' => $monthlyActivity,
                 'plan_distribution' => $planDistribution,
                 'invoice_statuses' => $invoiceStatuses,
+                'subscription_payments' => $subscriptionPayments,
             ],
             'latest_organizations' => $latestOrganizations,
             'attention_required_organizations' => $attentionRequiredOrganizations,
+            'latest_subscriptions' => $latestSubscriptions,
             'recent_users' => $recentUsers,
             'recent_invoices' => $recentInvoices,
         ]);

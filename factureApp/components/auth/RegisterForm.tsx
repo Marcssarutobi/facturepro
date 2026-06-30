@@ -12,7 +12,7 @@ type Step = 'registration' | 'payment'
 const PLAN_PRICES: Record<string, number> = {
   free:     0,
   pro:      5000,
-  business: 12000,
+  // business: 12000, // Business is not available yet.
 }
 
 const MONTH_OPTIONS = [
@@ -53,7 +53,7 @@ export default function RegisterForm() {
 
   useEffect(() => {
     const planFromUrl = searchParams.get("plan")
-    const validPlans  = ["free", "pro", "business"]
+    const validPlans  = ["free", "pro"]
     if (planFromUrl && validPlans.includes(planFromUrl)) {
       setFormData((prev) => ({ ...prev, plan: planFromUrl }))
     }
