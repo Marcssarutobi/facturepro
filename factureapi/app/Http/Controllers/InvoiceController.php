@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\ItemTemplate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -117,12 +118,39 @@ class InvoiceController extends Controller
                 $invoice->items()->create($item);
             }
 
+            $this->upsertItemTemplates($request->user()->organization_id, $validated['items']);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Facture créée avec succès',
                 'data' => $invoice->load(['customer', 'items']),
             ], 201);
         });
+    }
+
+    // Enregistre/actualise le "catalogue" de descriptions utilisées par l'organisation,
+    // pour l'autocomplétion (ItemTemplateController::index). Le prix (et la TVA) est
+    // toujours écrasé par la dernière valeur saisie pour cette description.
+    private function upsertItemTemplates(int $organizationId, array $items): void
+    {
+        foreach ($items as $item) {
+            $description = trim($item['description']);
+
+            if ($description === '') {
+                continue;
+            }
+
+            ItemTemplate::updateOrCreate(
+                [
+                    'organization_id' => $organizationId,
+                    'description' => $description,
+                ],
+                [
+                    'unit_price' => $item['unit_price'],
+                    'vat_rate' => $item['vat_rate'] ?? 0,
+                ]
+            );
+        }
     }
 
     // GET /api/invoices/{id}
@@ -199,7 +227,7 @@ class InvoiceController extends Controller
                 'data:image/svg+xml;base64,' . base64_encode($qrCode);
         }
 
-        $pdf = Pdf::loadView('invoices.pdf', [
+        $pdf = Pdf::loadView($invoice->organization->invoicePdfView(), [
             'invoice' => $invoice,
         ])->setPaper('a4');
 
@@ -278,6 +306,8 @@ class InvoiceController extends Controller
                 foreach ($validated['items'] as $item) {
                     $invoice->items()->create($item);
                 }
+
+                $this->upsertItemTemplates($invoice->organization_id, $validated['items']);
 
                 $validated['total_ht'] = $totalHt;
                 $validated['total_tva'] = $totalTva;
@@ -387,7 +417,7 @@ class InvoiceController extends Controller
                 'cancelled' => 'Annulée',
             ];
 
-            $pdf = Pdf::loadView('invoices.pdf', [
+            $pdf = Pdf::loadView($invoice->organization->invoicePdfView(), [
                 'invoice'      => $invoice,
                 'organization' => $invoice->organization,
                 'statusLabels' => $statusLabels,

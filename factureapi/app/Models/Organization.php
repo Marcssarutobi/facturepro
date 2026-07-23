@@ -18,7 +18,28 @@ class Organization extends Model
         'emcef_token',   // ← nouveau
         'emcef_nim',     // ← nouveau
         'emcef_active',  // ← nouveau
+        'invoice_template', // ← design de facture choisi
     ];
+
+    // ─────────────────────────────────────────
+    // Designs de facture disponibles
+    // ─────────────────────────────────────────
+    const INVOICE_TEMPLATES = [
+        'classic'     => 'Classique',
+        'modern'      => 'Moderne',
+        'minimalist'  => 'Minimaliste',
+    ];
+
+    // Retourne le nom de la vue Blade à utiliser pour générer le PDF,
+    // en fonction du design choisi par l'organisation (par défaut : moderne).
+    public function invoicePdfView(): string
+    {
+        $template = array_key_exists($this->invoice_template, self::INVOICE_TEMPLATES)
+            ? $this->invoice_template
+            : 'modern';
+
+        return 'invoices.pdf-' . $template;
+    }
 
     protected $casts = [
         'plan_started_at' => 'date',

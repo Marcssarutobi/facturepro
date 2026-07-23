@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class OrganizationController extends Controller
 {
@@ -172,6 +173,7 @@ class OrganizationController extends Controller
             'adresse' => 'sometimes|string',
             'country' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:2048',
+            'invoice_template' => ['sometimes', Rule::in(array_keys(Organization::INVOICE_TEMPLATES))],
         ]);
 
         if ($request->hasFile('logo')) {

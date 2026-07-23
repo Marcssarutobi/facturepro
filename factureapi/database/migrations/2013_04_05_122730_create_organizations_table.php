@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('adresse');
             $table->string('logo')->nullable();
+            $table->string('invoice_template')->default('modern');
             $table->string('email')->unique();
             $table->string('phone')->unique();
 

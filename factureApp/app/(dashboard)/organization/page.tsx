@@ -60,6 +60,7 @@ type OrganizationFormData = {
   emcef_token: string
   emcef_nim: string
   emcef_active: boolean
+  invoice_template: "classic" | "modern" | "minimalist"
 }
 
 type PaymentFormData = {
@@ -165,6 +166,7 @@ const INITIAL_FORM_DATA: OrganizationFormData = {
   emcef_token: "",
   emcef_nim: "",
   emcef_active: false,
+  invoice_template: "modern"
 }
 
 const INITIAL_PAYMENT_DATA: PaymentFormData = {
@@ -280,6 +282,7 @@ export default function OrganizationPage() {
       emcef_token: organization.emcef_token ?? prev.emcef_token,
       emcef_nim: organization.emcef_nim ?? prev.emcef_nim,
       emcef_active: organization.emcef_active ?? prev.emcef_active,
+      invoice_template: organization.invoice_template ?? prev.invoice_template,
     }))
   }
 
@@ -343,6 +346,7 @@ export default function OrganizationPage() {
       form.append("phone", formData.phone)
       form.append("country", formData.country ?? '')
       form.append("adresse", formData.adresse)
+      form.append("invoice_template", formData.invoice_template)
 
       if (formData.logo instanceof File) {
         form.append("logo", formData.logo)
@@ -625,6 +629,7 @@ export default function OrganizationPage() {
       emcef_token: org.emcef_token ?? "",
       emcef_nim: org.emcef_nim ?? "",
       emcef_active: Boolean(org.emcef_active ?? false),
+      invoice_template: org.invoice_template
     })
 
     const fullname = (user.fullname ?? "").trim()
@@ -1026,6 +1031,77 @@ export default function OrganizationPage() {
                   <p className="text-xs text-muted-foreground">
                     Format recommande : PNG ou SVG, 200x200px minimum
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Design de facture</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ce design sera utilise pour toutes vos factures (PDF et envoi par email).
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {(
+                      [
+                        {
+                          value: "classic",
+                          label: "Classique",
+                          description: "Sobre, formel, ideal pour la comptabilite",
+                        },
+                        {
+                          value: "modern",
+                          label: "Moderne",
+                          description: "Cartes sombres, look SaaS",
+                        },
+                        {
+                          value: "minimalist",
+                          label: "Minimaliste",
+                          description: "Epure, beaucoup d'espace blanc",
+                        },
+                      ] as const
+                    ).map((template) => {
+                      const isSelected = formData.invoice_template === template.value
+ 
+                      return (
+                        <button
+                          type="button"
+                          key={template.value}
+                          onClick={() =>
+                            setFormData({ ...formData, invoice_template: template.value })
+                          }
+                          className={`rounded-lg border-2 p-3 text-left transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          {/* Aperçu miniature très simplifié du style */}
+                          <div className="mb-2 h-16 w-full rounded border bg-white p-2">
+                            {template.value === "classic" && (
+                              <div className="space-y-1">
+                                <div className="h-1.5 w-1/2 bg-black" />
+                                <div className="h-px w-full bg-black" />
+                                <div className="h-1 w-3/4 bg-gray-300" />
+                                <div className="h-1 w-2/3 bg-gray-300" />
+                              </div>
+                            )}
+                            {template.value === "modern" && (
+                              <div className="flex justify-end">
+                                <div className="h-10 w-2/5 rounded bg-slate-900" />
+                              </div>
+                            )}
+                            {template.value === "minimalist" && (
+                              <div className="space-y-2">
+                                <div className="h-1 w-1/3 bg-gray-300" />
+                                <div className="h-px w-full bg-gray-200" />
+                                <div className="h-1 w-1/2 bg-gray-200" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium">{template.label}</p>
+                          <p className="text-xs text-muted-foreground">{template.description}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <Button type="submit" className="gap-2" disabled={organizationLoading}>

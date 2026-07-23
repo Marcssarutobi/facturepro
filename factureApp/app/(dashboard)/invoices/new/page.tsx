@@ -26,6 +26,7 @@ import {
 import { Plus, Trash2, Save, ArrowLeft, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
+import { DescriptionAutocomplete } from "../../../../factures/components/invoices/description-autocomplete"
 
 type Customer = {
   id: number
@@ -382,12 +383,16 @@ export default function NewInvoicePage() {
                         {lines.map((line) => (
                           <TableRow key={line.id}>
                             <TableCell>
-                              <Input
-                                placeholder="Description"
+                              <DescriptionAutocomplete
                                 value={line.description}
-                                onChange={(event) =>
-                                  updateLine(line.id, "description", event.target.value)
+                                onChange={(description) =>
+                                  updateLine(line.id, "description", description)
                                 }
+                                onSelectTemplate={(template) => {
+                                  updateLine(line.id, "description", template.description)
+                                  updateLine(line.id, "unit_price", template.unit_price)
+                                  updateLine(line.id, "vat_rate", template.vat_rate)
+                                }}
                                 className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
                               />
                             </TableCell>

@@ -10,6 +10,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PayementController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SuperAdminDashboardController;
+use App\Http\Controllers\ItemTemplateController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,6 +52,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('users/{user}', [UserController::class, 'destroy']);
     Route::get('profile', [UserController::class, 'profile']);
     Route::put('profile', [UserController::class, 'updateProfile']);
+
+    // Descriptions de facture déjà utilisées (autocomplétion)
+    Route::get('item-templates', [ItemTemplateController::class, 'index']);
 
     // Customers
     Route::apiResource('customers', CustomerController::class);
