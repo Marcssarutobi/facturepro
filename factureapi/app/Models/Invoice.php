@@ -18,7 +18,8 @@ class Invoice extends Model
     'emcef_counters',
     'emcef_datetime',
     'is_normalized',
-    'payment_type','anonymous_customer_name' ];
+    'payment_type','anonymous_customer_name',
+    'type', 'original_invoice_id', 'credit_scope' ];
 
     protected $casts = [ 'due_at' => 'date', 'echeance_at' => 'date', 'total_ht' => 'decimal:2', 'total_ttc' => 'decimal:2', 'total_tva' => 'decimal:2', 'is_normalized'  => 'boolean',
     'emcef_datetime' => 'datetime', ];
@@ -35,6 +36,24 @@ class Invoice extends Model
     public function reminders(): HasMany
     {
         return $this->hasMany(Reminder::class);
+    }
+
+    // Facture de vente d'origine, uniquement pour un avoir (type === 'FA')
+    public function originalInvoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'original_invoice_id');
+    }
+
+    // Avoirs émis à partir de cette facture de vente
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'original_invoice_id');
+    }
+
+    // Vrai si cette facture est un avoir (facture de type FA)
+    public function isCreditNote(): bool
+    {
+        return $this->type === 'FA';
     }
 
 }

@@ -6,6 +6,7 @@ const footerLinks = {
     { name: "Aperçu", href: "#demo" },
     { name: "Tarifs", href: "#tarifs" },
     { name: "FAQ", href: "#faq" },
+    { name: "Obtenir mon token e-MCF (Bénin)", href: "/documentation/emcef" },
   ],
   entreprise: [
     { name: "À propos", href: "#apropos" },

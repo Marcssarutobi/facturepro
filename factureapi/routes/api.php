@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus']);
     Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send']);
     Route::post('/invoices/{invoice}/normalize', [InvoiceNormalizationController::class, 'normalize']);
+    Route::post('/invoices/{invoice}/credit-note', [InvoiceController::class, 'storeCreditNote']);
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);

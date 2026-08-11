@@ -78,8 +78,8 @@
 
   {{-- Bannière --}}
   <div class="status-banner">
-    <h1>Votre facture est disponible</h1>
-    <p>Facture n&deg; {{ $invoice->invoice_number }} &mdash; {{ \Carbon\Carbon::parse($invoice->due_at)->format('d/m/Y') }}</p>
+    <h1>{{ $invoice->type === 'FA' ? 'Votre avoir est disponible' : 'Votre facture est disponible' }}</h1>
+    <p>{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }} n&deg; {{ $invoice->invoice_number }} &mdash; {{ \Carbon\Carbon::parse($invoice->due_at)->format('d/m/Y') }}</p>
   </div>
 
   {{-- Corps --}}

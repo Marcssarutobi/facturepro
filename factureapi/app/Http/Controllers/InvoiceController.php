@@ -30,6 +30,10 @@ class InvoiceController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
         if ($request->filled('customer_id')) {
             $query->where('customer_id', $request->customer_id);
         }
@@ -153,12 +157,139 @@ class InvoiceController extends Controller
         }
     }
 
+    // POST /api/invoices/{invoice}/credit-note
+    // Crée une facture d'avoir (FA) à partir d'une facture de vente normalisée :
+    // - scope = "total"   -> reprend toutes les lignes de la facture d'origine
+    // - scope = "partiel" -> reprend une seule ligne (article), avec une quantité <= quantité facturée
+    public function storeCreditNote(Request $request, Invoice $invoice): JsonResponse
+    {
+        $this->ensureSameOrganization($request, $invoice);
+
+        if ($invoice->type === 'FA') {
+            return response()->json([
+                'success' => false,
+                'message' => "Impossible de créer un avoir à partir d'une facture d'avoir.",
+            ], 422);
+        }
+
+        if (!$invoice->is_normalized || empty($invoice->emcef_code)) {
+            return response()->json([
+                'success' => false,
+                'message' => "La facture de vente d'origine doit d'abord être normalisée avant de pouvoir émettre un avoir.",
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'scope' => 'required|in:total,partiel',
+            'item_id' => 'required_if:scope,partiel|nullable|integer',
+            'quantity' => 'nullable|integer|min:1',
+        ]);
+
+        $invoice->load('items');
+
+        if ($invoice->items->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cette facture n'a aucune ligne à créditer.",
+            ], 422);
+        }
+
+        if ($validated['scope'] === 'partiel') {
+            $originalItem = $invoice->items->firstWhere('id', (int) $validated['item_id']);
+
+            if (!$originalItem) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cet article n'appartient pas à la facture d'origine.",
+                ], 422);
+            }
+
+            $quantity = $validated['quantity'] ?? $originalItem->quantity;
+
+            if ($quantity > $originalItem->quantity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "La quantité de l'avoir ne peut pas dépasser la quantité facturée ({$originalItem->quantity}).",
+                ], 422);
+            }
+
+            $itemsPayload = [[
+                'description' => $originalItem->description,
+                'quantity' => $quantity,
+                'unit_price' => $originalItem->unit_price,
+                'vat_rate' => $originalItem->vat_rate,
+                'original_item_id' => $originalItem->id,
+            ]];
+        } else {
+            $itemsPayload = $invoice->items->map(fn ($item) => [
+                'description' => $item->description,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'vat_rate' => $item->vat_rate,
+                'original_item_id' => $item->id,
+            ])->all();
+        }
+
+        return DB::transaction(function () use ($invoice, $itemsPayload, $validated, $request) {
+            $totalHt = collect($itemsPayload)->sum(
+                fn ($item) => $item['quantity'] * $item['unit_price']
+            );
+
+            $totalTva = collect($itemsPayload)->sum(
+                fn ($item) => $item['quantity'] * $item['unit_price'] * ($item['vat_rate'] ?? 0)
+            );
+
+            $totalTtc = $totalHt + $totalTva;
+
+            $creditNote = Invoice::create([
+                'invoice_number' => $this->generateCreditNoteNumber($invoice),
+                'type' => 'FA',
+                'original_invoice_id' => $invoice->id,
+                'credit_scope' => $validated['scope'],
+                'customer_id' => $invoice->customer_id,
+                'anonymous_customer_name' => $invoice->anonymous_customer_name,
+                'due_at' => now()->toDateString(),
+                'echeance_at' => now()->toDateString(),
+                'total_ht' => $totalHt,
+                'total_tva' => $totalTva,
+                'total_ttc' => $totalTtc,
+                'user_id' => $request->user()->id,
+                'organization_id' => $request->user()->organization_id,
+            ]);
+
+            foreach ($itemsPayload as $item) {
+                $creditNote->items()->create($item);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Avoir créé avec succès. Vous pouvez maintenant le normaliser.',
+                'data' => $creditNote->load(['customer', 'items', 'originalInvoice']),
+            ], 201);
+        });
+    }
+
+    // Génère un numéro de facture unique pour un avoir, dérivé du numéro d'origine.
+    private function generateCreditNoteNumber(Invoice $invoice): string
+    {
+        $base = 'AV-' . $invoice->invoice_number;
+        $number = $base;
+        $suffix = 1;
+
+        while (Invoice::where('invoice_number', $number)->exists()) {
+            $suffix++;
+            $number = $base . '-' . $suffix;
+        }
+
+        return $number;
+    }
+
     // GET /api/invoices/{id}
     public function show(Request $request, Invoice $invoice): JsonResponse
     {
         $this->ensureSameOrganization($request, $invoice);
 
-        $invoice->load(['customer', 'user', 'items', 'organization']);
+        $invoice->load(['customer', 'user', 'items', 'organization', 'originalInvoice']);
 
         // ✅ Générer QR code si facture normalisée
         if ($invoice->is_normalized && $invoice->emcef_qr_code) {
@@ -186,7 +317,7 @@ class InvoiceController extends Controller
     {
         $this->ensureSameOrganization($request, $invoice);
 
-        $invoice->load(['customer', 'user', 'items', 'organization']);
+        $invoice->load(['customer', 'user', 'items', 'organization', 'originalInvoice']);
 
         // ✅ Convertir l'URL du logo en chemin local pour DomPDF
         if ($invoice->organization->logo) {
@@ -354,7 +485,7 @@ class InvoiceController extends Controller
             'message' => 'nullable|string|max:1000',
         ]);
 
-        $invoice->load(['customer', 'items', 'organization', 'user']);
+        $invoice->load(['customer', 'items', 'organization', 'user', 'originalInvoice']);
 
         // ✅ 🔥 AJOUT ICI (logo_base64)
         if ($invoice->organization->logo) {
@@ -441,7 +572,7 @@ class InvoiceController extends Controller
                 'statusLabels'  => $statusLabels,
             ], function ($mail) use ($invoice, $fullPath, $filename) {
                 $mail->to($invoice->customer->email, $invoice->customer->fullname)
-                    ->subject("Facture {$invoice->invoice_number} — {$invoice->organization->name}")
+                    ->subject(($invoice->type === 'FA' ? 'Avoir' : 'Facture') . " {$invoice->invoice_number} — {$invoice->organization->name}")
                     ->attach($fullPath, [
                         'as'   => $filename,
                         'mime' => 'application/pdf',

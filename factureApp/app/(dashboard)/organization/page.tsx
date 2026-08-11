@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Building2, Upload, Save, AlertTriangle, Loader2, Lock, CreditCard } from "lucide-react"
+import { Building2, Upload, Save, AlertTriangle, Loader2, Lock, CreditCard, HelpCircle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
@@ -1124,13 +1125,23 @@ export default function OrganizationPage() {
           {(formData.country?.toLowerCase().trim() === "bénin" || formData.country?.toLowerCase().trim() === "benin") && (
             <Card className="border-border/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Informations supplementaires
-                </CardTitle>
-                <CardDescription>
-                  Ces informations sont necessaires pour l&apos;integration avec EMCEF.
-                </CardDescription>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Informations supplementaires
+                    </CardTitle>
+                    <CardDescription>
+                      Ces informations sont necessaires pour l&apos;integration avec EMCEF.
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" asChild className="gap-2">
+                    <Link href="/documentation/emcef">
+                      <HelpCircle className="h-4 w-4" />
+                      Comment obtenir mon token ?
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <form onSubmit={handleUpdateEmcef} className="space-y-6">

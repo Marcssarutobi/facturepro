@@ -36,6 +36,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import {
   Search,
   MoreHorizontal,
@@ -53,6 +55,7 @@ import {
   Send,
   CheckCircle2,
   Loader2,
+  RotateCcw,
 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
@@ -87,6 +90,10 @@ type Invoice = {
   customer_id: number
   customer: Customer | null
   created_at: string
+  type: "FV" | "FA"
+  original_invoice_id: number | null
+  credit_scope: "total" | "partiel" | null
+  originalInvoice?: { id: number; invoice_number: string } | null
 }
 
 type InvoiceDetailItem = {
@@ -95,6 +102,7 @@ type InvoiceDetailItem = {
   quantity: number
   unit_price: string
   vat_rate: string
+  original_item_id?: number | null
 }
 
 type InvoiceDetail = Invoice & {
@@ -195,6 +203,15 @@ export default function InvoicesPage() {
   const [isNormalizing, setIsNormalizing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null)
+
+  // ── Création d'avoir ──
+  const [isCreditNoteDialogOpen, setIsCreditNoteDialogOpen] = useState(false)
+  const [creditNoteSource, setCreditNoteSource] = useState<InvoiceDetail | null>(null)
+  const [creditNoteLoading, setCreditNoteLoading] = useState(false)
+  const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false)
+  const [creditNoteScope, setCreditNoteScope] = useState<"total" | "partiel">("total")
+  const [creditNoteItemId, setCreditNoteItemId] = useState<number | null>(null)
+  const [creditNoteQuantity, setCreditNoteQuantity] = useState<number>(1)
 
   const fetchInvoices = async (page = 1) => {
     setLoading(true)
@@ -389,6 +406,88 @@ export default function InvoicesPage() {
     }
   }
 
+  const handleOpenCreditNote = async (invoiceId: number) => {
+    setIsCreditNoteDialogOpen(true)
+    setCreditNoteLoading(true)
+    setCreditNoteSource(null)
+    setCreditNoteScope("total")
+    setCreditNoteItemId(null)
+    setCreditNoteQuantity(1)
+
+    try {
+      const res = await axiosInstance.get(`/invoices/${invoiceId}`)
+      if (res.status === 200) {
+        const invoiceData: InvoiceDetail = res.data.data
+        setCreditNoteSource(invoiceData)
+        if (invoiceData.items?.length > 0) {
+          setCreditNoteItemId(invoiceData.items[0].id)
+          setCreditNoteQuantity(invoiceData.items[0].quantity)
+        }
+      }
+    } catch (error) {
+      console.error(error)
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de charger la facture d'origine.",
+      })
+      setIsCreditNoteDialogOpen(false)
+    } finally {
+      setCreditNoteLoading(false)
+    }
+  }
+
+  const handleCreateCreditNote = async () => {
+    if (!creditNoteSource) return
+
+    if (creditNoteScope === "partiel" && !creditNoteItemId) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Sélectionnez un article à créditer.",
+      })
+      return
+    }
+
+    setCreditNoteSubmitting(true)
+
+    try {
+      const payload: Record<string, unknown> = { scope: creditNoteScope }
+      if (creditNoteScope === "partiel") {
+        payload.item_id = creditNoteItemId
+        payload.quantity = creditNoteQuantity
+      }
+
+      const res = await axiosInstance.post(
+        `/invoices/${creditNoteSource.id}/credit-note`,
+        payload
+      )
+
+      if (res.status === 201) {
+        setIsCreditNoteDialogOpen(false)
+        setCreditNoteSource(null)
+        await fetchInvoices(currentPage)
+        toast({
+          title: "Avoir créé",
+          description: res.data.message ?? "L'avoir a été créé avec succès. Vous pouvez maintenant le normaliser.",
+        })
+      }
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error?.response?.data?.message || "Impossible de créer l'avoir.",
+      })
+    } finally {
+      setCreditNoteSubmitting(false)
+    }
+  }
+
+  const creditNoteSelectedItem = creditNoteSource?.items.find(
+    (item) => item.id === creditNoteItemId
+  )
+
   return (
     <>
       <Header title="Factures" />
@@ -430,6 +529,7 @@ export default function InvoicesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>N°</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead className="hidden sm:table-cell">Montant HT</TableHead>
                     <TableHead className="hidden md:table-cell">Montant TTC</TableHead>
@@ -444,13 +544,13 @@ export default function InvoicesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         <Loader className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   ) : invoices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                         Aucune facture trouvée
                       </TableCell>
                     </TableRow>
@@ -458,6 +558,17 @@ export default function InvoicesPage() {
                     invoices.map((invoice) => (
                       <TableRow key={invoice.id}>
                         <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {invoice.type === "FA" ? (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+                              Avoir
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                              Vente
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="max-w-[150px] truncate">
                           {invoice.customer?.fullname ?? invoice.anonymous_customer_name}
                         </TableCell>
@@ -543,6 +654,15 @@ export default function InvoicesPage() {
                                 >
                                   <CheckCircle2 className="h-4 w-4" />
                                   Normaliser la facture
+                                </DropdownMenuItem>
+                              )}
+                              {invoice.type === "FV" && invoice.is_normalized && (
+                                <DropdownMenuItem
+                                  className="gap-2"
+                                  onClick={() => handleOpenCreditNote(invoice.id)}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                  Créer un avoir
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -662,6 +782,24 @@ export default function InvoicesPage() {
 
                   <div className="rounded-lg border p-4">
                     <div className="grid gap-2 text-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">Type de document</span>
+                        {selectedInvoice.type === "FA" ? (
+                          <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+                            Avoir{selectedInvoice.credit_scope === "partiel" ? " (partiel)" : " (total)"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                            Facture de vente
+                          </Badge>
+                        )}
+                      </div>
+                      {selectedInvoice.type === "FA" && selectedInvoice.originalInvoice && (
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Avoir sur facture</span>
+                          <span className="font-medium">{selectedInvoice.originalInvoice.invoice_number}</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-muted-foreground">Statut</span>
                         <Badge variant="secondary" className={getStatusColor(selectedInvoice.status)}>
@@ -1236,6 +1374,149 @@ export default function InvoicesPage() {
               <Button onClick={handleNormaliseInvoice} disabled={isNormalizing}>
                 {isNormalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isNormalizing ? "Traitement..." : "Confirmer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isCreditNoteDialogOpen}
+          onOpenChange={(open) => {
+            setIsCreditNoteDialogOpen(open)
+            if (!open) {
+              setCreditNoteSource(null)
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="h-5 w-5" />
+                Créer un avoir
+              </DialogTitle>
+              <DialogDescription>
+                {creditNoteSource
+                  ? `Avoir sur la facture ${creditNoteSource.invoice_number}`
+                  : "Chargement de la facture d'origine..."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {creditNoteLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : creditNoteSource ? (
+              <div className="space-y-5 py-2">
+                <RadioGroup
+                  value={creditNoteScope}
+                  onValueChange={(value) => setCreditNoteScope(value as "total" | "partiel")}
+                  className="space-y-3"
+                >
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <RadioGroupItem value="total" id="scope-total" className="mt-1" />
+                    <Label htmlFor="scope-total" className="cursor-pointer font-normal">
+                      <span className="block font-medium text-foreground">Avoir complet</span>
+                      <span className="block text-sm text-muted-foreground">
+                        Annule l'intégralité de la facture ({formatCurrency(creditNoteSource.total_ttc)} TTC).
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <RadioGroupItem value="partiel" id="scope-partiel" className="mt-1" />
+                    <Label htmlFor="scope-partiel" className="cursor-pointer font-normal">
+                      <span className="block font-medium text-foreground">Avoir partiel</span>
+                      <span className="block text-sm text-muted-foreground">
+                        Crédite un seul article de la facture, pour tout ou partie de sa quantité.
+                      </span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {creditNoteScope === "partiel" && (
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="credit-note-item">Article à créditer</Label>
+                      <Select
+                        value={creditNoteItemId ? String(creditNoteItemId) : undefined}
+                        onValueChange={(value) => {
+                          const itemId = Number(value)
+                          setCreditNoteItemId(itemId)
+                          const item = creditNoteSource.items.find((i) => i.id === itemId)
+                          if (item) setCreditNoteQuantity(item.quantity)
+                        }}
+                      >
+                        <SelectTrigger id="credit-note-item">
+                          <SelectValue placeholder="Sélectionner un article" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {creditNoteSource.items.map((item) => (
+                            <SelectItem key={item.id} value={String(item.id)}>
+                              {item.description} — qté {item.quantity} × {formatCurrency(getUnitPriceTTC(item.unit_price, item.vat_rate))}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {creditNoteSelectedItem && (
+                      <div className="space-y-2">
+                        <Label htmlFor="credit-note-quantity">
+                          Quantité à créditer (max {creditNoteSelectedItem.quantity})
+                        </Label>
+                        <Input
+                          id="credit-note-quantity"
+                          type="number"
+                          min={1}
+                          max={creditNoteSelectedItem.quantity}
+                          value={creditNoteQuantity}
+                          onChange={(e) => {
+                            const value = Number(e.target.value)
+                            if (Number.isNaN(value)) return
+                            const clamped = Math.min(
+                              Math.max(1, value),
+                              creditNoteSelectedItem.quantity
+                            )
+                            setCreditNoteQuantity(clamped)
+                          }}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Montant de l'avoir :{" "}
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(
+                              getUnitPriceTTC(
+                                creditNoteSelectedItem.unit_price,
+                                creditNoteSelectedItem.vat_rate
+                              ) * creditNoteQuantity
+                            )}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-sm text-amber-700">
+                  NB : l'avoir sera créé en brouillon. Vous devrez ensuite l'envoyer puis le
+                  normaliser, comme pour une facture classique.
+                </p>
+              </div>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsCreditNoteDialogOpen(false)}
+                disabled={creditNoteSubmitting}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleCreateCreditNote}
+                disabled={creditNoteSubmitting || creditNoteLoading || !creditNoteSource}
+              >
+                {creditNoteSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {creditNoteSubmitting ? "Création..." : "Créer l'avoir"}
               </Button>
             </DialogFooter>
           </DialogContent>

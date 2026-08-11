@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Facture {{ $invoice->invoice_number }}</title>
+    <title>{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }} {{ $invoice->invoice_number }}</title>
     <style>
         @page {
             margin: 32px;
@@ -273,9 +273,15 @@
                 </td>
                 <td class="cell-gap-left" style="width: 44%;">
                     <div class="card-dark">
-                        <p class="label">Facture</p>
+                        <p class="label">{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }}</p>
                         <p class="invoice-number">{{ $invoice->invoice_number }}</p>
                         <table class="meta-table">
+                            @if($invoice->type === 'FA' && $invoice->originalInvoice)
+                            <tr>
+                                <td class="muted">Avoir sur facture</td>
+                                <td class="text-right">{{ $invoice->originalInvoice->invoice_number }}</td>
+                            </tr>
+                            @endif
                             <tr>
                                 <td class="muted">Statut</td>
                                 <td class="text-right">

@@ -11,7 +11,7 @@ class InvoiceItems extends Model
 {
     use HasFactory;
 
-    protected $fillable = [ 'description', 'quantity', 'unit_price', 'vat_rate', 'invoice_id' ];
+    protected $fillable = [ 'description', 'quantity', 'unit_price', 'vat_rate', 'invoice_id', 'original_item_id' ];
     protected $casts = [ 'unit_price' => 'decimal:2', 'vat_rate' => 'decimal:2', ];
 
     // Appartient à une facture
@@ -20,4 +20,6 @@ class InvoiceItems extends Model
     public function getTotalHtAttribute(): float { return $this->quantity * $this->unit_price; }
     // Calcul du montant TVA de la ligne
     public function getTvaAttribute(): float { return $this->getTotalHtAttribute() * $this->vat_rate; }
+    // Ligne de la facture de vente d'origine créditée par cette ligne d'avoir
+    public function originalItem(): BelongsTo { return $this->belongsTo(InvoiceItems::class, 'original_item_id'); }
 }

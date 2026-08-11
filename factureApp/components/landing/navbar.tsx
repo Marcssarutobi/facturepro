@@ -11,6 +11,7 @@ const navLinks = [
   { name: "Confidentialité", href: "#confidentialite" },
   { name: "Support", href: "#support" },
   { name: "À propos", href: "#apropos" },
+  { name: "Documentation", href: "/documentation/emcef" },
 ]
 
 export function Navbar() {

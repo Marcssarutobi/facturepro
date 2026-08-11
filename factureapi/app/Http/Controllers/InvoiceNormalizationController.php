@@ -55,6 +55,32 @@ class InvoiceNormalizationController extends Controller
             ], 422);
         }
 
+        // ───────── Cas particulier : facture d'avoir (FA) ─────────
+        // Un avoir doit obligatoirement référencer le code MECeF/DGI de la
+        // facture de vente d'origine, qui doit donc déjà être normalisée.
+        $isCreditNote = $invoice->type === 'FA';
+        $reference = null;
+
+        if ($isCreditNote) {
+            $originalInvoice = $invoice->originalInvoice;
+
+            if (!$originalInvoice) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cet avoir n'est rattaché à aucune facture de vente d'origine.",
+                ], 422);
+            }
+
+            if (!$originalInvoice->is_normalized || empty($originalInvoice->emcef_code)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "La facture de vente d'origine ({$originalInvoice->invoice_number}) doit être normalisée avant de pouvoir normaliser cet avoir.",
+                ], 422);
+            }
+
+            $reference = $originalInvoice->emcef_code;
+        }
+
         $validated = $request->validate([
             'payment_type' => 'nullable|in:ESPECES,MOBILEMONEY,CARTEBANCAIRE,VIREMENT,CHEQUES,CREDIT,AUTRE',
         ]);
@@ -153,7 +179,7 @@ class InvoiceNormalizationController extends Controller
         // ───────── 3. PAYLOAD ─────────
         $payload = [
             'ifu'   => $org->ifu,
-            'type'  => 'FV',
+            'type'  => $isCreditNote ? 'FA' : 'FV',
             'items' => $items,
             'operator' => [
                 'name' => $user->fullname ?? $user->name ?? $org->name,
@@ -163,6 +189,10 @@ class InvoiceNormalizationController extends Controller
                 'amount' => (int) $totalTTC,
             ]],
         ];
+
+        if ($reference !== null) {
+            $payload['reference'] = $reference;
+        }
 
         if ($invoice->customer) {
             $payload['client'] = array_filter([
