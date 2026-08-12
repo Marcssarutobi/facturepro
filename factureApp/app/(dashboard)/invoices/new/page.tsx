@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -102,6 +103,8 @@ export default function NewInvoicePage() {
   const [loading, setLoading] = useState(false)
   const [loadingInvoice, setLoadingInvoice] = useState(isEditMode)
   const [error, setError] = useState("")
+  // ✅ Normalisation e-MCF automatique à la création (active par défaut)
+  const [autoNormalize, setAutoNormalize] = useState(true)
 
   useEffect(() => {
     if (isEditMode) return
@@ -242,6 +245,8 @@ export default function NewInvoicePage() {
           ...item,
           unit_price: roundAmount(item.unit_price),
         })),
+        // ✅ Uniquement pertinent à la création : normalisation e-MCF automatique
+        ...(isEditMode ? {} : { auto_normalize: autoNormalize }),
       }
 
       const res = isEditMode
@@ -250,10 +255,29 @@ export default function NewInvoicePage() {
 
       if ((isEditMode && res.status === 200) || (!isEditMode && res.status === 201)) {
         router.push("/invoices")
-        toast({
-          title: "Facture ajoutée",
-          description: "La facture a bien été enregistrée.",
-        })
+
+        const normalization = res.data?.normalization as
+          | { attempted: boolean; success: boolean; message: string }
+          | null
+          | undefined
+
+        if (normalization?.attempted && normalization.success) {
+          toast({
+            title: "Facture créée et normalisée",
+            description: "La facture a été enregistrée, marquée payée et normalisée auprès d'e-MCF.",
+          })
+        } else if (normalization?.attempted && !normalization.success) {
+          toast({
+            variant: "destructive",
+            title: "Facture créée, normalisation en attente",
+            description: `La facture a été enregistrée et marquée payée, mais la normalisation e-MCF a échoué : ${normalization.message}`,
+          })
+        } else {
+          toast({
+            title: "Facture ajoutée",
+            description: "La facture a bien été enregistrée.",
+          })
+        }
       }
     } catch (submitError: any) {
       console.error(submitError)
@@ -505,7 +529,25 @@ export default function NewInvoicePage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-2 pt-4">
+                    <div className="space-y-4 pt-4">
+                      <div className="flex items-start gap-2 rounded-lg border p-3">
+                        <Checkbox
+                          id="auto-normalize"
+                          checked={autoNormalize}
+                          onCheckedChange={(checked) => setAutoNormalize(checked === true)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="auto-normalize" className="cursor-pointer font-normal">
+                          <span className="block font-medium text-foreground">
+                            Normaliser automatiquement
+                          </span>
+                          <span className="block text-sm text-muted-foreground">
+                            La facture sera marquée payée et normalisée auprès d&apos;e-MCF dès sa
+                            création.
+                          </span>
+                        </Label>
+                      </div>
+
                       {/* <Button
                         type="button"
                         className="w-full gap-2"
@@ -522,8 +564,16 @@ export default function NewInvoicePage() {
                         disabled={loading}
                         onClick={handleSubmit}
                       >
-                        <Save className="h-4 w-4" />
-                        Enregistrer brouillon
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                        {loading
+                          ? "Enregistrement..."
+                          : autoNormalize
+                            ? "Créer et normaliser"
+                            : "Enregistrer brouillon"}
                       </Button>
                     </div>
                   )}

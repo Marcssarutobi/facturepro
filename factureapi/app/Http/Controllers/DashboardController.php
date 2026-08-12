@@ -27,9 +27,8 @@ class DashboardController extends Controller
         // Statistiques générales
         $totalCustomers = Customer::where('organization_id', $organization->id)->count();
         $totalInvoices = Invoice::where('organization_id', $organization->id)->count();
-        $totalRevenue = Invoice::where('organization_id', $organization->id)
-            ->where('status', 'paid')
-            ->sum('total_ttc');
+        // ✅ CA net : les avoirs (FA) sont déduits, pas additionnés
+        $totalRevenue = $this->netPaidRevenue($organization->id);
         $pendingInvoices = Invoice::where('organization_id', $organization->id)
             ->where('status', '!=', 'paid')
             ->where('due_at', '<', Carbon::now())
@@ -51,11 +50,7 @@ class DashboardController extends Controller
         for ($i = 11; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $month = $date->format('Y-m');
-            $revenue = Invoice::where('organization_id', $organization->id)
-                ->where('status', 'paid')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->sum('total_ttc');
+            $revenue = $this->netPaidRevenue($organization->id, $date);
             $monthlyRevenue[] = [
                 'month' => $date->format('M Y'),
                 'revenue' => (float) $revenue
@@ -75,11 +70,8 @@ class DashboardController extends Controller
             ->where('status', '!=', 'paid')
             ->where('due_at', '<', Carbon::now())
             ->sum('total_ttc');
-        $currentMonthRevenue = Invoice::where('organization_id', $organization->id)
-            ->where('status', 'paid')
-            ->whereYear('created_at', Carbon::now()->year)
-            ->whereMonth('created_at', Carbon::now()->month)
-            ->sum('total_ttc');
+        // ✅ CA du mois net : les avoirs (FA) émis ce mois sont déduits
+        $currentMonthRevenue = $this->netPaidRevenue($organization->id, Carbon::now());
 
         // Factures récentes
         $recentInvoices = Invoice::where('organization_id', $organization->id)
@@ -117,5 +109,23 @@ class DashboardController extends Controller
             ],
             'recent_invoices' => $recentInvoices,
         ]);
+    }
+
+    // Calcule le chiffre d'affaires "net" pour une organisation : la somme des
+    // factures de vente (FV) payées, moins la somme des avoirs (FA) payés.
+    // Si $month est fourni, restreint le calcul à ce mois/année précis.
+    private function netPaidRevenue(int $organizationId, ?Carbon $month = null): float
+    {
+        $query = Invoice::where('organization_id', $organizationId)
+            ->where('status', 'paid');
+
+        if ($month) {
+            $query->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month);
+        }
+
+        return (float) $query
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'FA' THEN -total_ttc ELSE total_ttc END), 0) as net")
+            ->value('net');
     }
 }

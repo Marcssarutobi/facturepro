@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\ItemTemplate;
+use App\Services\EmcefNormalizationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,10 @@ use BaconQrCode\Writer;
 
 class InvoiceController extends Controller
 {
+    public function __construct(private readonly EmcefNormalizationService $normalizationService)
+    {
+    }
+
     // GET /api/invoices
     public function index(Request $request): JsonResponse
     {
@@ -83,9 +88,12 @@ class InvoiceController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.vat_rate' => 'nullable|numeric|min:0|max:1',
+            // ✅ Normalisation automatique à la création
+            'auto_normalize' => 'sometimes|boolean',
+            'payment_type' => 'nullable|in:ESPECES,MOBILEMONEY,CARTEBANCAIRE,VIREMENT,CHEQUES,CREDIT,AUTRE',
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
+        $invoice = DB::transaction(function () use ($validated, $request) {
 
             $totalHt = collect($validated['items'])->sum(
                 fn ($item) => $item['quantity'] * $item['unit_price']
@@ -124,12 +132,46 @@ class InvoiceController extends Controller
 
             $this->upsertItemTemplates($request->user()->organization_id, $validated['items']);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Facture créée avec succès',
-                'data' => $invoice->load(['customer', 'items']),
-            ], 201);
+            return $invoice;
         });
+
+        // ✅ Normalisation automatique (hors transaction : appel HTTP externe vers e-MCF)
+        $normalization = $this->maybeAutoNormalize($invoice, $request, $validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Facture créée avec succès',
+            'data' => $invoice->load(['customer', 'items']),
+            'normalization' => $normalization,
+        ], 201);
+    }
+
+    // Si `auto_normalize` est demandé : passe la facture en "payée" puis tente
+    // de la normaliser auprès d'e-MCF. La facture reste enregistrée même si la
+    // normalisation échoue (l'utilisateur pourra réessayer manuellement).
+    private function maybeAutoNormalize(Invoice $invoice, Request $request, array $validated): ?array
+    {
+        if (empty($validated['auto_normalize'])) {
+            return null;
+        }
+
+        $invoice->update(['status' => 'paid']);
+
+        $result = $this->normalizationService->normalize(
+            $invoice,
+            $request->user(),
+            $validated['payment_type'] ?? null
+        );
+
+        if ($result['success']) {
+            $invoice->setRawAttributes($result['invoice']->getAttributes());
+        }
+
+        return [
+            'attempted' => true,
+            'success' => $result['success'],
+            'message' => $result['message'],
+        ];
     }
 
     // Enregistre/actualise le "catalogue" de descriptions utilisées par l'organisation,
@@ -183,6 +225,9 @@ class InvoiceController extends Controller
             'scope' => 'required|in:total,partiel',
             'item_id' => 'required_if:scope,partiel|nullable|integer',
             'quantity' => 'nullable|integer|min:1',
+            // ✅ Normalisation automatique à la création de l'avoir
+            'auto_normalize' => 'sometimes|boolean',
+            'payment_type' => 'nullable|in:ESPECES,MOBILEMONEY,CARTEBANCAIRE,VIREMENT,CHEQUES,CREDIT,AUTRE',
         ]);
 
         $invoice->load('items');
@@ -230,7 +275,7 @@ class InvoiceController extends Controller
             ])->all();
         }
 
-        return DB::transaction(function () use ($invoice, $itemsPayload, $validated, $request) {
+        $creditNote = DB::transaction(function () use ($invoice, $itemsPayload, $validated, $request) {
             $totalHt = collect($itemsPayload)->sum(
                 fn ($item) => $item['quantity'] * $item['unit_price']
             );
@@ -261,12 +306,22 @@ class InvoiceController extends Controller
                 $creditNote->items()->create($item);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Avoir créé avec succès. Vous pouvez maintenant le normaliser.',
-                'data' => $creditNote->load(['customer', 'items', 'originalInvoice']),
-            ], 201);
+            return $creditNote;
         });
+
+        // ✅ Normalisation automatique (hors transaction : appel HTTP externe vers e-MCF)
+        $normalization = $this->maybeAutoNormalize($creditNote, $request, $validated);
+
+        $message = $normalization && $normalization['success']
+            ? "Avoir créé et normalisé avec succès."
+            : 'Avoir créé avec succès. Vous pouvez maintenant le normaliser.';
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $creditNote->load(['customer', 'items', 'originalInvoice']),
+            'normalization' => $normalization,
+        ], 201);
     }
 
     // Génère un numéro de facture unique pour un avoir, dérivé du numéro d'origine.

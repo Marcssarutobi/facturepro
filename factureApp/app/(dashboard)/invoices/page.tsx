@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Search,
   MoreHorizontal,
@@ -212,6 +213,8 @@ export default function InvoicesPage() {
   const [creditNoteScope, setCreditNoteScope] = useState<"total" | "partiel">("total")
   const [creditNoteItemId, setCreditNoteItemId] = useState<number | null>(null)
   const [creditNoteQuantity, setCreditNoteQuantity] = useState<number>(1)
+  // ✅ Normalisation e-MCF automatique à la création de l'avoir (active par défaut)
+  const [creditNoteAutoNormalize, setCreditNoteAutoNormalize] = useState(true)
 
   const fetchInvoices = async (page = 1) => {
     setLoading(true)
@@ -413,6 +416,7 @@ export default function InvoicesPage() {
     setCreditNoteScope("total")
     setCreditNoteItemId(null)
     setCreditNoteQuantity(1)
+    setCreditNoteAutoNormalize(true)
 
     try {
       const res = await axiosInstance.get(`/invoices/${invoiceId}`)
@@ -452,7 +456,10 @@ export default function InvoicesPage() {
     setCreditNoteSubmitting(true)
 
     try {
-      const payload: Record<string, unknown> = { scope: creditNoteScope }
+      const payload: Record<string, unknown> = {
+        scope: creditNoteScope,
+        auto_normalize: creditNoteAutoNormalize,
+      }
       if (creditNoteScope === "partiel") {
         payload.item_id = creditNoteItemId
         payload.quantity = creditNoteQuantity
@@ -467,10 +474,24 @@ export default function InvoicesPage() {
         setIsCreditNoteDialogOpen(false)
         setCreditNoteSource(null)
         await fetchInvoices(currentPage)
-        toast({
-          title: "Avoir créé",
-          description: res.data.message ?? "L'avoir a été créé avec succès. Vous pouvez maintenant le normaliser.",
-        })
+
+        const normalization = res.data?.normalization as
+          | { attempted: boolean; success: boolean; message: string }
+          | null
+          | undefined
+
+        if (normalization?.attempted && !normalization.success) {
+          toast({
+            variant: "destructive",
+            title: "Avoir créé, normalisation en attente",
+            description: `L'avoir a été enregistré et marqué payé, mais la normalisation e-MCF a échoué : ${normalization.message}`,
+          })
+        } else {
+          toast({
+            title: "Avoir créé",
+            description: res.data.message ?? "L'avoir a été créé avec succès. Vous pouvez maintenant le normaliser.",
+          })
+        }
       }
     } catch (error: any) {
       console.error(error)
@@ -1496,9 +1517,27 @@ export default function InvoicesPage() {
                   </div>
                 )}
 
+                <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <Checkbox
+                    id="credit-note-auto-normalize"
+                    checked={creditNoteAutoNormalize}
+                    onCheckedChange={(checked) => setCreditNoteAutoNormalize(checked === true)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="credit-note-auto-normalize" className="cursor-pointer font-normal">
+                    <span className="block font-medium text-foreground">
+                      Normaliser automatiquement
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      L'avoir sera marqué payé et normalisé auprès d'e-MCF dès sa création.
+                    </span>
+                  </Label>
+                </div>
+
                 <p className="text-sm text-amber-700">
-                  NB : l'avoir sera créé en brouillon. Vous devrez ensuite l'envoyer puis le
-                  normaliser, comme pour une facture classique.
+                  {creditNoteAutoNormalize
+                    ? "NB : si la normalisation automatique échoue, l'avoir restera enregistré (statut payé) et vous pourrez réessayer manuellement."
+                    : "NB : l'avoir sera créé en brouillon. Vous devrez ensuite l'envoyer puis le normaliser, comme pour une facture classique."}
                 </p>
               </div>
             ) : null}
