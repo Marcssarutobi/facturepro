@@ -104,7 +104,7 @@ export default function NewInvoicePage() {
   const [loadingInvoice, setLoadingInvoice] = useState(isEditMode)
   const [error, setError] = useState("")
   // ✅ Normalisation e-MCF automatique à la création (active par défaut)
-  const [autoNormalize, setAutoNormalize] = useState(true)
+  const [autoNormalize, setAutoNormalize] = useState(false)
 
   useEffect(() => {
     if (isEditMode) return
