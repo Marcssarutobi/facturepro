@@ -28,6 +28,9 @@ class Organization extends Model
         'classic'     => 'Classique',
         'modern'      => 'Moderne',
         'minimalist'  => 'Minimaliste',
+        'elegant'     => 'Elegant',
+        'corporate'   => 'Corporate',
+        'compact'     => 'Compact',
     ];
 
     // Retourne le nom de la vue Blade à utiliser pour générer le PDF,

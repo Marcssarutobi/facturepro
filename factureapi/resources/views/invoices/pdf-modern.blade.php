@@ -21,21 +21,18 @@
             width: 100%;
         }
 
-        .page {
-            page-break-inside: avoid;
-        }
-
         .section-gap {
-            page-break-inside: avoid;
-        }
-
-        .lines-wrap {
             page-break-inside: avoid;
         }
 
         .footer-wrap {
             page-break-inside: avoid;
         }
+
+        /* ✅ Répète l'en-tête du tableau sur chaque page + évite de couper
+           une ligne d'article en deux lors d'un saut de page */
+        .lines-table thead { display: table-header-group; }
+        .lines-table tbody tr { page-break-inside: avoid; }
 
         .section-gap {
             margin-bottom: 16px;
@@ -157,7 +154,7 @@
         .lines-wrap {
             border: 1px solid #e2e8f0;
             border-radius: 12px;
-            overflow: hidden;
+            margin-bottom: 16px;
         }
 
         .lines-table th {
@@ -341,7 +338,7 @@
     </div>
 
     {{-- ── LIGNES DE FACTURE ───────────────────────────────── --}}
-    <div class="lines-wrap section-gap">
+    <div class="lines-wrap">
         <table class="lines-table">
             <thead>
                 <tr>
@@ -368,7 +365,7 @@
         </table>
     </div>
 
-    {{-- ── FOOTER : NOTE + TOTAUX ──────────────────────────── --}}
+    {{-- ── FOOTER : NOTE + TOTAUX + SECURITE e-MCF (bloc protégé) ────── --}}
     <div class="footer-wrap">
         <table class="layout-table">
             <tr>
@@ -405,45 +402,9 @@
                 </td>
             </tr>
         </table>
+
+        @include('invoices.partials.emcef-block')
     </div>
-
-    @if($invoice->is_normalized && $invoice->qr_code_base64)
-        <div style="border:1px solid #e2e8f0; padding:16px; border-radius:8px; margin-top:20px;">
-
-            <table style="width:100%;">
-                <tr>
-                    <td style="width:120px;">
-                        <img src="{{ $invoice->qr_code_base64 }}" style="width:80px;">
-                    </td>
-                    <td>
-
-                        <p style="text-align:center; font-size:12px;">Code MECeF/DGI</p>
-                        <p style="text-align:center; font-weight:bold;">
-                            {{ $invoice->emcef_code }}
-                        </p>
-
-                        <table style="width:100%; margin-top:10px;">
-                            <tr>
-                                <td>MECeF NIM :</td>
-                                <td style="text-align:right;">{{ $invoice->emcef_nim }}</td>
-                            </tr>
-                            <tr>
-                                <td>MECeF Compteurs :</td>
-                                <td style="text-align:right;">{{ $invoice->emcef_counters }}</td>
-                            </tr>
-                            <tr>
-                                <td>MECeF Heure :</td>
-                                <td style="text-align:right;">
-                                    {{ \Carbon\Carbon::parse($invoice->emcef_datetime)->format('d/m/Y H:i') }}
-                                </td>
-                            </tr>
-                        </table>
-
-                    </td>
-                </tr>
-            </table>
-        </div>
-    @endif
 
 </div>
 </body>

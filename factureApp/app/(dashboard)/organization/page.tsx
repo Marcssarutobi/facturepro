@@ -61,7 +61,7 @@ type OrganizationFormData = {
   emcef_token: string
   emcef_nim: string
   emcef_active: boolean
-  invoice_template: "classic" | "modern" | "minimalist"
+  invoice_template: "classic" | "modern" | "minimalist" | "elegant" | "corporate" | "compact"
 }
 
 type PaymentFormData = {
@@ -630,7 +630,7 @@ export default function OrganizationPage() {
       emcef_token: org.emcef_token ?? "",
       emcef_nim: org.emcef_nim ?? "",
       emcef_active: Boolean(org.emcef_active ?? false),
-      invoice_template: org.invoice_template
+      invoice_template: org.invoice_template ?? "modern"
     })
 
     const fullname = (user.fullname ?? "").trim()
@@ -1057,10 +1057,25 @@ export default function OrganizationPage() {
                           label: "Minimaliste",
                           description: "Epure, beaucoup d'espace blanc",
                         },
+                        {
+                          value: "elegant",
+                          label: "Elegant",
+                          description: "Navy et or, style maison de prestige",
+                        },
+                        {
+                          value: "corporate",
+                          label: "Corporate",
+                          description: "Bandeau bleu plein, look entreprise",
+                        },
+                        {
+                          value: "compact",
+                          label: "Compact",
+                          description: "Dense, ideal pour les longues listes d'articles",
+                        },
                       ] as const
                     ).map((template) => {
                       const isSelected = formData.invoice_template === template.value
- 
+
                       return (
                         <button
                           type="button"
@@ -1094,6 +1109,25 @@ export default function OrganizationPage() {
                                 <div className="h-1 w-1/3 bg-gray-300" />
                                 <div className="h-px w-full bg-gray-200" />
                                 <div className="h-1 w-1/2 bg-gray-200" />
+                              </div>
+                            )}
+                            {template.value === "elegant" && (
+                              <div className="space-y-1.5">
+                                <div className="h-1.5 w-2/5 bg-slate-800" />
+                                <div className="h-px w-full bg-amber-600" />
+                                <div className="h-1 w-3/4 bg-gray-300" />
+                              </div>
+                            )}
+                            {template.value === "corporate" && (
+                              <div className="-m-2 mb-2 h-6 w-[calc(100%+16px)] bg-blue-700" />
+                            )}
+                            {template.value === "compact" && (
+                              <div className="space-y-1">
+                                <div className="h-1 w-2/5 bg-teal-600" />
+                                <div className="h-px w-full bg-teal-600" />
+                                <div className="h-0.5 w-full bg-gray-200" />
+                                <div className="h-0.5 w-full bg-gray-200" />
+                                <div className="h-0.5 w-full bg-gray-200" />
                               </div>
                             )}
                           </div>

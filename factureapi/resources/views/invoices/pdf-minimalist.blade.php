@@ -81,6 +81,14 @@
             border-bottom: 1px solid #e8e8e8;
         }
 
+        /* ✅ Répète l'en-tête du tableau sur chaque page + évite de couper
+           une ligne d'article en deux lors d'un saut de page */
+        .lines-table thead { display: table-header-group; }
+        .lines-table tbody tr { page-break-inside: avoid; }
+
+        /* ✅ Le bloc totaux + sécurité e-MCF ne doit jamais être coupé */
+        .totals-block { page-break-inside: avoid; }
+
         .lines-table td {
             padding: 12px 0;
             border-bottom: 1px solid #f2f2f2;
@@ -213,44 +221,32 @@
         </tbody>
     </table>
 
-    {{-- ── TOTAUX ──────────────────────────────────────────── --}}
-    <table class="layout-table">
-        <tr>
-            <td style="width: 60%;"></td>
-            <td style="width: 40%;">
-                <table class="totals-table">
-                    <tr>
-                        <td class="muted">Total HT</td>
-                        <td class="text-right">{{ $formatMoney($invoice->total_ht) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="muted">TVA</td>
-                        <td class="text-right">{{ $formatMoney($invoice->total_tva) }}</td>
-                    </tr>
-                    <tr class="totals-final">
-                        <td>Total TTC</td>
-                        <td class="text-right">{{ $formatMoney($invoice->total_ttc) }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    @if($invoice->is_normalized && $invoice->qr_code_base64)
-        <div class="hairline"></div>
-        <table style="width:100%;">
+    {{-- ── TOTAUX + SECURITE e-MCF (bloc protégé, ne se coupe jamais) ─── --}}
+    <div class="totals-block">
+        <table class="layout-table">
             <tr>
-                <td style="width:90px;">
-                    <img src="{{ $invoice->qr_code_base64 }}" style="width:70px;">
-                </td>
-                <td class="muted" style="font-size:10px;">
-                    Code MECeF/DGI : {{ $invoice->emcef_code }}<br>
-                    NIM {{ $invoice->emcef_nim }} — Compteur {{ $invoice->emcef_counters }}<br>
-                    {{ \Carbon\Carbon::parse($invoice->emcef_datetime)->format('d/m/Y H:i') }}
+                <td style="width: 60%;"></td>
+                <td style="width: 40%;">
+                    <table class="totals-table">
+                        <tr>
+                            <td class="muted">Total HT</td>
+                            <td class="text-right">{{ $formatMoney($invoice->total_ht) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="muted">TVA</td>
+                            <td class="text-right">{{ $formatMoney($invoice->total_tva) }}</td>
+                        </tr>
+                        <tr class="totals-final">
+                            <td>Total TTC</td>
+                            <td class="text-right">{{ $formatMoney($invoice->total_ttc) }}</td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
-    @endif
+
+        @include('invoices.partials.emcef-block')
+    </div>
 
     <p class="footer-note">Merci pour votre confiance.</p>
 </div>

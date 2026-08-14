@@ -194,6 +194,10 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
+  // ✅ Preview PDF réel (même rendu que le téléchargement, donc le bon template)
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState("")
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null)
@@ -270,7 +274,35 @@ export default function InvoicesPage() {
 
   const handleOpenPreview = async (invoiceId: number) => {
     setIsPreviewDialogOpen(true)
+    setPreviewError("")
+    setPreviewLoading(true)
+    setPreviewPdfUrl(null)
+
+    // Charge en parallèle les détails (numéro affiché dans le titre du modal)
+    // et le VRAI PDF généré par le backend — garantit que le design affiché
+    // ici est exactement celui téléchargé (bon template, bonne pagination).
     await loadInvoiceDetails(invoiceId)
+
+    try {
+      const res = await axiosInstance.get(`/invoices/${invoiceId}/pdf`, {
+        responseType: "blob",
+      })
+      const blob = new Blob([res.data], { type: "application/pdf" })
+      setPreviewPdfUrl(window.URL.createObjectURL(blob))
+    } catch (error) {
+      console.error(error)
+      setPreviewError("Impossible de générer l'aperçu PDF pour cette facture.")
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handleClosePreview = (open: boolean) => {
+    setIsPreviewDialogOpen(open)
+    if (!open && previewPdfUrl) {
+      window.URL.revokeObjectURL(previewPdfUrl)
+      setPreviewPdfUrl(null)
+    }
   }
 
   const handleEdit = (invoiceId: number) => {
@@ -995,17 +1027,8 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
 
-        <Dialog
-          open={isPreviewDialogOpen}
-          onOpenChange={(open) => {
-            setIsPreviewDialogOpen(open)
-            if (!open) {
-              setSelectedInvoice(null)
-              setViewError("")
-            }
-          }}
-        >
-          <DialogContent className="max-h-[92vh] overflow-y-auto bg-slate-100 p-0 sm:max-w-5xl">
+        <Dialog open={isPreviewDialogOpen} onOpenChange={handleClosePreview}>
+          <DialogContent className="flex h-[92vh] max-h-[92vh] flex-col overflow-hidden bg-slate-100 p-0 sm:max-w-5xl">
             <div className="flex items-center justify-between border-b bg-white px-6 py-4">
               <div>
                 <DialogTitle className="flex items-center gap-2">
@@ -1015,7 +1038,10 @@ export default function InvoicesPage() {
                     : "Preview PDF"}
                 </DialogTitle>
                 <DialogDescription>
-                  Aperçu d&apos;une facture professionnelle prête à être exportée.
+                  {/* ✅ Aperçu du PDF réellement généré par le backend : reflète
+                      toujours le template choisi dans les paramètres de
+                      l'organisation, exactement comme le fichier téléchargé. */}
+                  Rendu exact du PDF qui sera téléchargé (même template, même pagination).
                 </DialogDescription>
               </div>
               <Button
@@ -1036,203 +1062,23 @@ export default function InvoicesPage() {
               </Button>
             </div>
 
-            <div className="p-6">
-              {viewLoading ? (
-                <div className="flex h-[60vh] items-center justify-center rounded-xl border border-dashed bg-white">
+            <div className="flex-1 overflow-hidden bg-slate-200">
+              {viewLoading || previewLoading ? (
+                <div className="flex h-full items-center justify-center">
                   <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : viewError ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-                  {viewError}
-                </div>
-              ) : selectedInvoice ? (
-                <div className="mx-auto max-w-4xl rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
-                  <div className="flex flex-col gap-8">
-                    <div className="flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-4">
-                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white">
-                          F
-                        </div>
-                        <div>
-                          <p className="text-2xl font-semibold tracking-tight text-slate-900">
-                            {selectedInvoice.organization?.name ?? "FacturaPro"}
-                          </p>
-                          <div className="mt-2 space-y-1 text-sm text-slate-500">
-                            <p>{selectedInvoice.organization?.adresse ?? "Adresse non renseignée"}</p>
-                            <p>{selectedInvoice.organization?.email ?? "Email non renseigné"}</p>
-                            <p>{selectedInvoice.organization?.phone ?? "Téléphone non renseigné"}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4 rounded-3xl bg-slate-950 px-6 py-5 text-white sm:min-w-[260px]">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.3em] text-slate-300">Facture</p>
-                          <p className="mt-2 text-2xl font-semibold">{selectedInvoice.invoice_number}</p>
-                        </div>
-                        <div className="grid gap-3 text-sm">
-                          <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-3">
-                            <span className="text-slate-300">Statut</span>
-                            <span>{getStatusLabel(selectedInvoice.status)}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-slate-300">Émise le</span>
-                            <span>{formatDate(selectedInvoice.due_at)}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-slate-300">Échéance</span>
-                            <span>{formatDate(selectedInvoice.echeance_at)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-2xl bg-slate-50 p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
-                          Facturée à
-                        </p>
-                        <div className="mt-3 space-y-1">
-                          <p className="text-lg font-semibold text-slate-900">
-                            {selectedInvoice.customer?.fullname ?? selectedInvoice.anonymous_customer_name}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {selectedInvoice.customer?.email ?? "Email non renseigné"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
-                          Préparée par
-                        </p>
-                        <div className="mt-3 space-y-1">
-                          <p className="text-lg font-semibold text-slate-900">
-                            {selectedInvoice.user?.fullname ?? "Équipe FacturaPro"}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {selectedInvoice.user?.email ?? "Email non renseigné"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="overflow-hidden rounded-3xl border border-slate-200">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 text-left text-xs uppercase tracking-[0.22em] text-slate-400">
-                            <th className="px-6 py-4 font-semibold">Description</th>
-                            <th className="px-6 py-4 font-semibold">Qté</th>
-                            <th className="px-6 py-4 font-semibold">Prix unitaire TTC</th>
-                            <th className="px-6 py-4 font-semibold">TVA</th>
-                            <th className="px-6 py-4 text-right font-semibold">Total TTC</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedInvoice.items.map((item) => (
-                            <tr key={item.id} className="border-t border-slate-200">
-                              <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                                {item.description}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-slate-600">{item.quantity}</td>
-                              <td className="px-6 py-4 text-sm text-slate-600">
-                                {formatCurrency(getUnitPriceTTC(item.unit_price, item.vat_rate))}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-slate-600">
-                                {formatPercent(item.vat_rate)}
-                              </td>
-                              <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
-                                {formatCurrency(getLineTotalTTC(item))}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="flex flex-col gap-6 border-t border-slate-200 pt-6 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="max-w-md rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">
-                        <p className="font-semibold text-slate-900">Note</p>
-                        <p className="mt-2">
-                          Merci pour votre confiance. Cet aperçu correspond au rendu PDF
-                          professionnel qui pourra être téléchargé ensuite.
-                        </p>
-                      </div>
-
-                      <div className="w-full max-w-sm space-y-3 rounded-3xl bg-slate-950 px-6 py-5 text-white">
-                        <div className="flex items-center justify-between gap-4 text-sm">
-                          <span className="text-slate-300">Total HT</span>
-                          <span>{formatCurrency(selectedInvoice.total_ht)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4 text-sm">
-                          <span className="text-slate-300">TVA</span>
-                          <span>{formatCurrency(selectedInvoice.total_tva)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-3 text-base font-semibold">
-                          <span>Total TTC</span>
-                          <span>{formatCurrency(selectedInvoice.total_ttc)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedInvoice.is_normalized && (
-                      <div className="border rounded-lg p-4 bg-white">
-
-                        {/* Titre */}
-                        <p className="text-xs text-center text-muted-foreground uppercase tracking-wider mb-3">
-                          -- Éléments de sécurité de la facture normalisée --
-                        </p>
-
-                        <div className="border rounded-md p-4 flex gap-4 items-center">
-
-                          {/* QR CODE */}
-                          <div className="shrink-0">
-                            <img
-                              src={selectedInvoice.qr_code_base64}
-                              alt="QR Code"
-                              className="w-[110px] h-[110px] object-contain"
-                            />
-                          </div>
-
-                          {/* INFOS */}
-                          <div className="flex-1">
-
-                            {/* Code principal */}
-                            <p className="text-center text-sm font-medium text-muted-foreground">
-                              Code MECeF/DGI
-                            </p>
-
-                            <p className="text-center font-semibold text-sm mb-3">
-                              {selectedInvoice.emcef_code}
-                            </p>
-
-                            {/* Détails */}
-                            <div className="grid grid-cols-2 gap-y-1 text-sm">
-
-                              <span className="text-muted-foreground">MECeF NIM :</span>
-                              <span className="text-right font-medium">
-                                {selectedInvoice.emcef_nim}
-                              </span>
-
-                              <span className="text-muted-foreground">MECeF Compteurs :</span>
-                              <span className="text-right font-medium">
-                                {selectedInvoice.emcef_counters}
-                              </span>
-
-                              <span className="text-muted-foreground">MECeF Heure :</span>
-                              <span className="text-right font-medium">
-                                {new Date(selectedInvoice.emcef_datetime).toLocaleString("fr-FR")}
-                              </span>
-
-                            </div>
-                          </div>
-
-                        </div>
-                      </div>
-                    )}
-
+              ) : viewError || previewError ? (
+                <div className="p-6">
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                    {viewError || previewError}
                   </div>
                 </div>
+              ) : previewPdfUrl ? (
+                <iframe
+                  src={previewPdfUrl}
+                  title="Aperçu PDF de la facture"
+                  className="h-full w-full border-0"
+                />
               ) : null}
             </div>
           </DialogContent>

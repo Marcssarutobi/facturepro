@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <title>{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }} {{ $invoice->invoice_number }}</title>
     <style>
-        @page { margin: 36px; }
+        @page { margin: 26px; }
 
         body {
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
-            line-height: 1.5;
-            color: #1a1a1a;
+            font-size: 10.5px;
+            line-height: 1.35;
+            color: #111827;
             background: #ffffff;
         }
 
@@ -24,130 +24,122 @@
         .layout-table td { vertical-align: top; }
 
         .org-logo {
-            width: 130px;
-            height: 48px;
+            width: 100px;
+            height: 36px;
             object-fit: contain;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: block;
         }
 
         .company-name {
-            margin: 0 0 6px;
-            font-size: 16px;
+            margin: 0 0 3px;
+            font-size: 13px;
             font-weight: 700;
         }
 
-        .muted { color: #555555; }
+        .muted { color: #6b7280; }
 
-        .title-block {
-            text-align: right;
-        }
+        .title-block { text-align: right; }
 
         .invoice-title {
-            margin: 0 0 4px;
-            font-size: 26px;
+            margin: 0 0 2px;
+            font-size: 17px;
             font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            color: #0d9488;
         }
 
         .invoice-number {
             margin: 0;
-            font-size: 13px;
-            color: #555555;
+            font-size: 10.5px;
+            color: #6b7280;
         }
 
-        .double-rule {
-            border-top: 3px double #1a1a1a;
-            margin: 18px 0;
-        }
-
-        .single-rule {
-            border-top: 1px solid #1a1a1a;
-            margin: 18px 0;
+        .rule {
+            border-top: 1px solid #0d9488;
+            margin: 8px 0 10px;
         }
 
         .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
-        .meta-table td { padding: 2px 0; }
+        .meta-table td { padding: 1px 0; font-size: 10px; }
 
         .text-right { text-align: right; }
 
         .section-label {
-            margin: 0 0 6px;
-            font-size: 10px;
+            margin: 0 0 3px;
+            font-size: 8.5px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #1a1a1a;
-            padding-bottom: 4px;
+            letter-spacing: 0.6px;
+            color: #0d9488;
         }
 
         .lines-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 8px;
         }
+
+        .lines-table thead { display: table-header-group; }
 
         .lines-table th {
-            padding: 8px 6px;
+            padding: 4px 5px;
             text-align: left;
-            font-size: 10px;
+            font-size: 8.5px;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
-            border-top: 2px solid #1a1a1a;
-            border-bottom: 2px solid #1a1a1a;
+            letter-spacing: 0.4px;
+            background: #f0fdfa;
+            color: #0d9488;
+            border-top: 1px solid #0d9488;
+            border-bottom: 1px solid #0d9488;
         }
-
-        /* ✅ Répète l'en-tête du tableau sur chaque page + évite de couper
-           une ligne d'article en deux lors d'un saut de page */
-        .lines-table thead { display: table-header-group; }
-        .lines-table tbody tr { page-break-inside: avoid; }
-
-        /* ✅ Le bloc totaux ne doit jamais être coupé entre deux pages */
-        .totals-block { page-break-inside: avoid; }
 
         .lines-table td {
-            padding: 8px 6px;
-            border-bottom: 1px solid #cccccc;
+            padding: 4px 5px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 10px;
         }
+
+        .lines-table tbody tr { page-break-inside: avoid; }
+
+        .totals-block { page-break-inside: avoid; }
 
         .totals-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px;
+            margin-top: 4px;
         }
 
-        .totals-table td {
-            padding: 5px 0;
-        }
+        .totals-table td { padding: 2px 0; font-size: 10.5px; }
 
         .totals-final td {
-            border-top: 2px solid #1a1a1a;
-            padding-top: 8px;
-            font-size: 15px;
+            border-top: 1px solid #0d9488;
+            padding-top: 4px;
+            font-size: 12.5px;
             font-weight: 700;
         }
 
         .status-tag {
             display: inline-block;
-            padding: 2px 8px;
-            border: 1px solid #1a1a1a;
-            font-size: 10px;
+            padding: 1px 6px;
+            background: #f0fdfa;
+            color: #0d9488;
+            font-size: 8.5px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
+            border-radius: 3px;
         }
 
         .footer-note {
-            margin-top: 30px;
-            padding-top: 12px;
-            border-top: 1px solid #cccccc;
-            font-size: 10px;
-            color: #555555;
+            margin-top: 14px;
+            padding-top: 6px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 8.5px;
+            color: #6b7280;
         }
     </style>
 </head>
@@ -171,20 +163,19 @@
 
 <div class="page">
 
-    {{-- ── EN-TETE : ORGANISATION / TITRE FACTURE ─────────── --}}
+    {{-- ── EN-TETE ─────────────────────────────────────────── --}}
     <table class="layout-table">
         <tr>
             <td style="width: 55%;">
                 @if(!$isFreePlan && $hasLogo)
                     <img src="{{ public_path('storage/' . $org->logo) }}" alt="{{ $org->name }}" class="org-logo">
                 @else
-                    <img src="{{ public_path('/logoFacture.png') }}" alt="Logo" class="org-logo" width="130">
+                    <img src="{{ public_path('/logoFacture.png') }}" alt="Logo" class="org-logo" width="100">
                 @endif
                 <p class="company-name">{{ $org->name ?? 'FacturaPro' }}</p>
                 <div class="muted">
                     <div>{{ $org->adresse ?? 'Adresse non renseignee' }}</div>
-                    <div>{{ $org->email ?? 'Email non renseigne' }}</div>
-                    <div>{{ $org->phone ?? 'Telephone non renseigne' }}</div>
+                    <div>{{ $org->email ?? 'Email non renseigne' }} — {{ $org->phone ?? 'Telephone non renseigne' }}</div>
                 </div>
             </td>
             <td class="title-block" style="width: 45%;">
@@ -216,40 +207,39 @@
         </tr>
     </table>
 
-    <div class="double-rule"></div>
+    <div class="rule"></div>
 
     {{-- ── CLIENT / EMETTEUR ───────────────────────────────── --}}
     <table class="layout-table">
         <tr>
             <td style="width: 50%;">
                 <p class="section-label">Facturee a</p>
-                <p style="font-weight:700; margin:0 0 4px;">
+                <p style="font-weight:700; margin:0 0 2px;">
                     {{ $invoice->customer->fullname ?? $invoice->anonymous_customer_name }}
                 </p>
                 <div class="muted">
                     <div>{{ $invoice->customer->email ?? 'Email non renseigne' }}</div>
                     @if($invoice->customer->ifu ?? null)<div>IFU : {{ $invoice->customer->ifu }}</div>@endif
                     @if($invoice->customer->phone ?? null)<div>{{ $invoice->customer->phone }}</div>@endif
-                    @if($invoice->customer->adresse ?? null)<div>{{ $invoice->customer->adresse }}</div>@endif
                 </div>
             </td>
-            <td style="width: 50%; padding-left: 20px;">
+            <td style="width: 50%; padding-left: 16px;">
                 <p class="section-label">Preparee par</p>
-                <p style="font-weight:700; margin:0 0 4px;">{{ $invoice->user->fullname ?? 'Equipe FacturaPro' }}</p>
+                <p style="font-weight:700; margin:0 0 2px;">{{ $invoice->user->fullname ?? 'Equipe FacturaPro' }}</p>
                 <div class="muted">{{ $invoice->user->email ?? 'Email non renseigne' }}</div>
             </td>
         </tr>
     </table>
 
-    {{-- ── LIGNES DE FACTURE ───────────────────────────────── --}}
+    {{-- ── LIGNES DE FACTURE (dense, optimisee pour listes longues) ── --}}
     <table class="lines-table">
         <thead>
             <tr>
-                <th style="width: 42%;">Description</th>
-                <th style="width: 10%;">Qte</th>
-                <th style="width: 18%;">Prix unit. TTC</th>
-                <th style="width: 10%;">TVA</th>
-                <th class="text-right" style="width: 20%;">Total TTC</th>
+                <th style="width: 44%;">Description</th>
+                <th style="width: 9%;">Qte</th>
+                <th style="width: 17%;">P.U. TTC</th>
+                <th style="width: 9%;">TVA</th>
+                <th class="text-right" style="width: 21%;">Total TTC</th>
             </tr>
         </thead>
         <tbody>

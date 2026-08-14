@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <title>{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }} {{ $invoice->invoice_number }}</title>
     <style>
-        @page { margin: 36px; }
+        @page { margin: 40px; }
 
         body {
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
-            line-height: 1.5;
-            color: #1a1a1a;
+            line-height: 1.6;
+            color: #1e293b;
             background: #ffffff;
         }
 
@@ -23,48 +23,50 @@
 
         .layout-table td { vertical-align: top; }
 
+        .gold-rule {
+            border-top: 2px solid #b45309;
+            margin: 20px 0;
+        }
+
+        .hairline {
+            border-top: 1px solid #e5e7eb;
+            margin: 20px 0;
+        }
+
         .org-logo {
             width: 130px;
             height: 48px;
             object-fit: contain;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             display: block;
         }
 
         .company-name {
             margin: 0 0 6px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #1e293b;
         }
 
-        .muted { color: #555555; }
+        .muted { color: #64748b; }
 
-        .title-block {
-            text-align: right;
-        }
+        .title-block { text-align: right; }
 
-        .invoice-title {
+        .kicker {
             margin: 0 0 4px;
-            font-size: 26px;
+            font-size: 10px;
             font-weight: 700;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            color: #b45309;
         }
 
         .invoice-number {
-            margin: 0;
-            font-size: 13px;
-            color: #555555;
-        }
-
-        .double-rule {
-            border-top: 3px double #1a1a1a;
-            margin: 18px 0;
-        }
-
-        .single-rule {
-            border-top: 1px solid #1a1a1a;
-            margin: 18px 0;
+            margin: 0 0 6px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
         }
 
         .meta-table {
@@ -73,18 +75,17 @@
             margin-top: 6px;
         }
 
-        .meta-table td { padding: 2px 0; }
+        .meta-table td { padding: 3px 0; }
 
         .text-right { text-align: right; }
 
         .section-label {
-            margin: 0 0 6px;
-            font-size: 10px;
+            margin: 0 0 8px;
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #1a1a1a;
-            padding-bottom: 4px;
+            letter-spacing: 2px;
+            color: #b45309;
         }
 
         .lines-table {
@@ -93,28 +94,27 @@
             margin-top: 10px;
         }
 
-        .lines-table th {
-            padding: 8px 6px;
-            text-align: left;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            border-top: 2px solid #1a1a1a;
-            border-bottom: 2px solid #1a1a1a;
-        }
-
-        /* ✅ Répète l'en-tête du tableau sur chaque page + évite de couper
-           une ligne d'article en deux lors d'un saut de page */
         .lines-table thead { display: table-header-group; }
-        .lines-table tbody tr { page-break-inside: avoid; }
 
-        /* ✅ Le bloc totaux ne doit jamais être coupé entre deux pages */
-        .totals-block { page-break-inside: avoid; }
+        .lines-table th {
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #b45309;
+            border-top: 1px solid #1e293b;
+            border-bottom: 1px solid #1e293b;
+        }
 
         .lines-table td {
-            padding: 8px 6px;
-            border-bottom: 1px solid #cccccc;
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f5f9;
         }
+
+        .lines-table tbody tr { page-break-inside: avoid; }
+
+        .totals-block { page-break-inside: avoid; }
 
         .totals-table {
             width: 100%;
@@ -122,32 +122,34 @@
             margin-top: 8px;
         }
 
-        .totals-table td {
-            padding: 5px 0;
-        }
+        .totals-table td { padding: 5px 0; }
 
         .totals-final td {
-            border-top: 2px solid #1a1a1a;
-            padding-top: 8px;
-            font-size: 15px;
+            border-top: 1px solid #b45309;
+            padding-top: 10px;
+            font-size: 16px;
             font-weight: 700;
+            color: #1e293b;
         }
 
         .status-tag {
             display: inline-block;
-            padding: 2px 8px;
-            border: 1px solid #1a1a1a;
-            font-size: 10px;
+            padding: 2px 10px;
+            border: 1px solid #b45309;
+            color: #b45309;
+            font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
         }
 
         .footer-note {
-            margin-top: 30px;
-            padding-top: 12px;
-            border-top: 1px solid #cccccc;
+            margin-top: 26px;
+            padding-top: 14px;
+            border-top: 1px solid #e5e7eb;
             font-size: 10px;
-            color: #555555;
+            font-style: italic;
+            color: #64748b;
+            text-align: center;
         }
     </style>
 </head>
@@ -171,7 +173,7 @@
 
 <div class="page">
 
-    {{-- ── EN-TETE : ORGANISATION / TITRE FACTURE ─────────── --}}
+    {{-- ── EN-TETE ─────────────────────────────────────────── --}}
     <table class="layout-table">
         <tr>
             <td style="width: 55%;">
@@ -188,7 +190,7 @@
                 </div>
             </td>
             <td class="title-block" style="width: 45%;">
-                <p class="invoice-title">{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }}</p>
+                <p class="kicker">{{ $invoice->type === 'FA' ? 'Avoir' : 'Facture' }}</p>
                 <p class="invoice-number">N° {{ $invoice->invoice_number }}</p>
                 <table class="meta-table">
                     @if($invoice->type === 'FA' && $invoice->originalInvoice)
@@ -216,14 +218,14 @@
         </tr>
     </table>
 
-    <div class="double-rule"></div>
+    <div class="gold-rule"></div>
 
     {{-- ── CLIENT / EMETTEUR ───────────────────────────────── --}}
     <table class="layout-table">
         <tr>
             <td style="width: 50%;">
                 <p class="section-label">Facturee a</p>
-                <p style="font-weight:700; margin:0 0 4px;">
+                <p style="font-weight:700; margin:0 0 4px; font-size:13px;">
                     {{ $invoice->customer->fullname ?? $invoice->anonymous_customer_name }}
                 </p>
                 <div class="muted">
@@ -235,7 +237,7 @@
             </td>
             <td style="width: 50%; padding-left: 20px;">
                 <p class="section-label">Preparee par</p>
-                <p style="font-weight:700; margin:0 0 4px;">{{ $invoice->user->fullname ?? 'Equipe FacturaPro' }}</p>
+                <p style="font-weight:700; margin:0 0 4px; font-size:13px;">{{ $invoice->user->fullname ?? 'Equipe FacturaPro' }}</p>
                 <div class="muted">{{ $invoice->user->email ?? 'Email non renseigne' }}</div>
             </td>
         </tr>
@@ -292,7 +294,7 @@
         @include('invoices.partials.emcef-block')
     </div>
 
-    <p class="footer-note">Merci pour votre confiance.</p>
+    <p class="footer-note">Merci pour la confiance que vous accordez a notre maison.</p>
 </div>
 </body>
 </html>
