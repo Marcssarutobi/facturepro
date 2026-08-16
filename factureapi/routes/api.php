@@ -6,6 +6,7 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ReceiptPrintController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PayementController;
 use App\Http\Controllers\DashboardController;
@@ -66,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send']);
     Route::post('/invoices/{invoice}/normalize', [InvoiceNormalizationController::class, 'normalize']);
     Route::post('/invoices/{invoice}/credit-note', [InvoiceController::class, 'storeCreditNote']);
+    Route::get('/invoices/{invoice}/print-ticket', [ReceiptPrintController::class, 'printTicket']);
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);

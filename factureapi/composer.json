@@ -12,6 +12,7 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "mike42/escpos-php": "^5.0",
         "simplesoftwareio/simple-qrcode": "^4.2"
     },
     "require-dev": {

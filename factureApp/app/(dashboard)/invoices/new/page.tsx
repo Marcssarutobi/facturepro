@@ -27,6 +27,7 @@ import {
 import { Plus, Trash2, Save, ArrowLeft, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "@/hooks/use-toast"
+import { autoPrintReceipt } from "@/lib/printService"
 import { DescriptionAutocomplete } from "../../../../factures/components/invoices/description-autocomplete"
 
 type Customer = {
@@ -105,6 +106,9 @@ export default function NewInvoicePage() {
   const [error, setError] = useState("")
   // ✅ Normalisation e-MCF automatique à la création (active par défaut)
   const [autoNormalize, setAutoNormalize] = useState(false)
+  // ✅ Coché par défaut : imprime le ticket et marque la facture payée à la création
+  const [autoPrintTicket, setAutoPrintTicket] = useState(true)
+  const [printing, setPrinting] = useState(false)
 
   useEffect(() => {
     if (isEditMode) return
@@ -254,12 +258,32 @@ export default function NewInvoicePage() {
         : await axiosInstance.post("/invoices", payload)
 
       if ((isEditMode && res.status === 200) || (!isEditMode && res.status === 201)) {
-        router.push("/invoices")
-
         const normalization = res.data?.normalization as
           | { attempted: boolean; success: boolean; message: string }
           | null
           | undefined
+
+        const createdInvoiceId = res.data?.data?.id as number | undefined
+
+        // ✅ Ticket automatique : imprime + marque payée (sauf si auto_normalize
+        // l'a déjà fait, qui passe aussi la facture en "payée" côté serveur).
+        let printOutcome: "printed" | "fallback" | "error" | null = null
+
+        if (!isEditMode && autoPrintTicket && createdInvoiceId) {
+          setPrinting(true)
+          try {
+            if (!normalization?.attempted) {
+              await axiosInstance.put(`/invoices/${createdInvoiceId}/status`, {
+                status: "paid",
+              })
+            }
+            printOutcome = await autoPrintReceipt(createdInvoiceId)
+          } finally {
+            setPrinting(false)
+          }
+        }
+
+        router.push("/invoices")
 
         if (normalization?.attempted && normalization.success) {
           toast({
@@ -271,6 +295,22 @@ export default function NewInvoicePage() {
             variant: "destructive",
             title: "Facture créée, normalisation en attente",
             description: `La facture a été enregistrée et marquée payée, mais la normalisation e-MCF a échoué : ${normalization.message}`,
+          })
+        } else if (printOutcome === "printed") {
+          toast({
+            title: "Facture créée et payée",
+            description: "Le ticket a été envoyé à l'imprimante.",
+          })
+        } else if (printOutcome === "fallback") {
+          toast({
+            title: "Facture créée et payée",
+            description: "Imprimante non détectée : le PDF a été ouvert à la place.",
+          })
+        } else if (printOutcome === "error") {
+          toast({
+            variant: "destructive",
+            title: "Facture créée et payée",
+            description: "L'impression du ticket a échoué, mais la facture a bien été enregistrée.",
           })
         } else {
           toast({
@@ -548,6 +588,24 @@ export default function NewInvoicePage() {
                         </Label>
                       </div>
 
+                      <div className="flex items-start gap-2 rounded-lg border p-3">
+                        <Checkbox
+                          id="auto-print-ticket"
+                          checked={autoPrintTicket}
+                          onCheckedChange={(checked) => setAutoPrintTicket(checked === true)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="auto-print-ticket" className="cursor-pointer font-normal">
+                          <span className="block font-medium text-foreground">
+                            Imprimer le ticket automatiquement
+                          </span>
+                          <span className="block text-sm text-muted-foreground">
+                            Le ticket sortira directement sur l&apos;imprimante et la facture sera
+                            marquée payée à la création.
+                          </span>
+                        </Label>
+                      </div>
+
                       {/* <Button
                         type="button"
                         className="w-full gap-2"
@@ -561,19 +619,21 @@ export default function NewInvoicePage() {
                         type="button"
                         variant="outline"
                         className="w-full gap-2"
-                        disabled={loading}
+                        disabled={loading || printing}
                         onClick={handleSubmit}
                       >
-                        {loading ? (
+                        {loading || printing ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Save className="h-4 w-4" />
                         )}
                         {loading
                           ? "Enregistrement..."
-                          : autoNormalize
-                            ? "Créer et normaliser"
-                            : "Enregistrer brouillon"}
+                          : printing
+                            ? "Impression du ticket..."
+                            : autoNormalize
+                              ? "Créer et normaliser"
+                              : "Enregistrer brouillon"}
                       </Button>
                     </div>
                   )}
